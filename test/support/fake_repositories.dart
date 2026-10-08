@@ -7,23 +7,48 @@ import 'package:agustream/domain/backend/progress_repository.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
 import 'package:flutter/foundation.dart';
 
+/// Profile the fakes use when a test does not care about profiles.
+const BackendProfile testProfile = BackendProfile(
+  id: 'prof-1',
+  name: 'Tester',
+  profileId: 1,
+);
+
 /// In-memory account for widget tests.
 class FakeAccountRepository extends ChangeNotifier
     implements AccountRepository {
-  FakeAccountRepository({bool signedIn = true, this.availableProfiles = const []})
-    : _session = signedIn
-          ? const BackendSession(
-              accessToken: 'test-token',
-              refreshToken: 'test-refresh',
-              userId: 'test-user',
-              email: 'tester@example.com',
-            )
-          : null;
+  FakeAccountRepository({
+    bool signedIn = true,
+    bool withProfile = true,
+    this.availableProfiles = const <BackendProfile>[testProfile],
+    this.profilesError,
+    this.isLoadingProfiles = false,
+  }) : _session = signedIn
+           ? const BackendSession(
+               accessToken: 'test-token',
+               refreshToken: 'test-refresh',
+               userId: 'test-user',
+               email: 'tester@example.com',
+             )
+           : null {
+    _profiles = availableProfiles;
+    if (signedIn && withProfile && availableProfiles.isNotEmpty) {
+      _activeProfile = availableProfiles.first;
+    }
+  }
 
-  /// Profiles returned by [profiles].
+  /// Profiles the account reports.
   final List<BackendProfile> availableProfiles;
 
+  /// Reported by [profilesError] without needing a failed load.
+  @override
+  final Object? profilesError;
+
+  @override
+  final bool isLoadingProfiles;
+
   BackendSession? _session;
+  List<BackendProfile> _profiles = const <BackendProfile>[];
   BackendProfile? _activeProfile;
 
   @override
@@ -37,6 +62,9 @@ class FakeAccountRepository extends ChangeNotifier
 
   @override
   String? get email => _session?.email;
+
+  @override
+  List<BackendProfile> get profiles => _profiles;
 
   @override
   BackendProfile? get activeProfile => _activeProfile;
@@ -53,6 +81,9 @@ class FakeAccountRepository extends ChangeNotifier
       email: email,
     );
     _session = session;
+    // Signing in does not choose a profile: the app asks for one.
+    _activeProfile = null;
+    _profiles = availableProfiles;
     notifyListeners();
     return session;
   }
@@ -60,15 +91,20 @@ class FakeAccountRepository extends ChangeNotifier
   @override
   Future<void> signOut() async {
     _session = null;
+    _profiles = const <BackendProfile>[];
     _activeProfile = null;
     notifyListeners();
   }
 
   @override
-  Future<List<BackendProfile>> profiles() async => availableProfiles;
+  Future<void> loadProfiles() async {
+    _profiles = availableProfiles;
+    notifyListeners();
+  }
 
   @override
   Future<void> selectProfile(BackendProfile profile) async {
+    if (profile.profileId == _activeProfile?.profileId) return;
     _activeProfile = profile;
     notifyListeners();
   }

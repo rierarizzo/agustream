@@ -86,11 +86,13 @@ class NuvioClient {
 
   /// Runs a PostgREST read on [table].
   ///
-  /// Throws [BackendException] when there is no session: row-level security
-  /// would return nothing useful anyway.
+  /// [order] and [filter] are passed through as-is, e.g. `added_at.desc` and
+  /// `profile_id=eq.1`. Throws [BackendException] when there is no session:
+  /// row-level security would return nothing useful anyway.
   Future<List<Map<String, dynamic>>> select(
     String table, {
     String? order,
+    String? filter,
   }) async {
     await _ensureDiscovered();
     final current = _session;
@@ -99,6 +101,7 @@ class NuvioClient {
     }
     final query = StringBuffer('?select=*');
     if (order != null) query.write('&order=$order');
+    if (filter != null) query.write('&$filter');
     final json = await _request(
       'GET',
       Uri.parse('$_baseUrl/rest/v1/$table$query'),

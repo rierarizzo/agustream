@@ -25,8 +25,8 @@ Future<void> main(List<String> args) async {
   runApp(
     AgustreamApp(
       account: account,
-      library: NuvioLibraryRepository(client),
-      progress: NuvioProgressRepository(client),
+      library: NuvioLibraryRepository(client, account),
+      progress: NuvioProgressRepository(client, account),
       initialSource: _initialSource(args),
     ),
   );

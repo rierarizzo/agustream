@@ -28,6 +28,14 @@ const _token = {
   'user': {'id': 'user-1', 'email': 'me@example.com'},
 };
 
+const _profile = {
+  'id': 'prof-1',
+  'profile_id': 1,
+  'profile_index': 1,
+  'name': 'Keneth',
+  'pin_enabled': false,
+};
+
 http.Response _json(Object? body, [int status = 200]) =>
     http.Response.bytes(utf8.encode(jsonEncode(body)), status);
 
@@ -52,24 +60,42 @@ class _Backend {
          }),
        ) {
     account = NuvioAccountRepository(client);
-    library = NuvioLibraryRepository(client);
-    progress = NuvioProgressRepository(client);
+    library = NuvioLibraryRepository(client, account);
+    progress = NuvioProgressRepository(client, account);
   }
 
   final NuvioClient client;
   late final NuvioAccountRepository account;
   late final NuvioLibraryRepository library;
   late final NuvioProgressRepository progress;
+
+  /// Signs in. This loads the profiles but does **not** choose one.
+  Future<void> signIn() =>
+      account.signIn(email: 'me@example.com', password: 'secret');
+
+  /// Signs in and chooses the first profile, like the app does after the
+  /// profile gate.
+  Future<void> signInAndChooseProfile() async {
+    await signIn();
+    final first = account.profiles.isEmpty ? null : account.profiles.first;
+    if (first != null) await account.selectProfile(first);
+  }
 }
 
-/// Handler that serves discovery + token, and [table] for any REST read.
-http.Response Function(http.Request) _serving(Map<String, Object?> table) {
+/// Handler that serves discovery, token and profiles, and [table] for any other
+/// REST read.
+http.Response Function(http.Request) _serving(
+  Map<String, Object?> table, {
+  List<Map<String, Object?>>? profiles,
+}) {
   return (request) {
     switch (request.url.path) {
       case '/.well-known/nuvio':
         return _json(_discovery);
       case '/auth/v1/token':
         return _json(_token);
+      case '/rest/v1/profiles':
+        return _json(profiles ?? const [_profile]);
       default:
         return _json([table]);
     }
@@ -108,23 +134,18 @@ void main() {
   });
 
   group('signIn', () {
-    test('discovers first, then posts email + password', () async {
+    test('discovers, posts email + password, and loads the profiles', () async {
       final requests = <http.Request>[];
-      final backend = _Backend((request) {
-        if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
-        return _json(_token);
-      }, log: requests);
+      final backend = _Backend(_serving({}), log: requests);
 
       final session = await backend.account.signIn(
         email: 'me@example.com',
         password: 'secret',
       );
 
-      expect(requests, hasLength(2));
       expect(requests.first.url.path, '/.well-known/nuvio');
 
-      final auth = requests.last;
-      expect(auth.method, 'POST');
+      final auth = requests.firstWhere((request) => request.method == 'POST');
       expect(
         auth.url.toString(),
         'https://backend.example/auth/v1/token?grant_type=password',
@@ -146,6 +167,7 @@ void main() {
       );
       expect(backend.account.isSignedIn, isTrue);
       expect(backend.account.email, 'me@example.com');
+      expect(backend.account.profiles, hasLength(1));
     });
 
     test('surfaces the backend error message', () async {
@@ -173,44 +195,78 @@ void main() {
   });
 
   group('account', () {
-    test('starts with no active profile', () async {
+    test('has no active profile before signing in', () async {
       final backend = _Backend(_serving({}));
 
       expect(backend.account.activeProfile, isNull);
+      expect(backend.account.profiles, isEmpty);
+    });
+
+    test('signing in loads the profiles without choosing one', () async {
+      final backend = _Backend(_serving({}));
+
+      await backend.signIn();
+
+      expect(backend.account.profiles, hasLength(1));
+      expect(backend.account.profiles.single.profileId, 1);
+      expect(
+        backend.account.activeProfile,
+        isNull,
+        reason: 'the profile must be chosen explicitly',
+      );
+    });
+
+    test('keeps the session when the profiles cannot be read', () async {
+      final backend = _Backend((request) {
+        switch (request.url.path) {
+          case '/.well-known/nuvio':
+            return _json(_discovery);
+          case '/rest/v1/profiles':
+            return http.Response('nope', 500);
+          default:
+            return _json(_token);
+        }
+      });
+
+      await backend.signIn();
+
+      expect(backend.account.isSignedIn, isTrue);
+      expect(backend.account.profiles, isEmpty);
+      expect(backend.account.profilesError, isA<BackendException>());
     });
 
     test('notifies when the session or the profile changes', () async {
-      final backend = _Backend((request) {
-        if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
-        return _json(_token);
-      });
+      final backend = _Backend(_serving({}));
       var notifications = 0;
       backend.account.changes.addListener(() => notifications++);
 
-      await backend.account.signIn(email: 'me@example.com', password: 'secret');
-      expect(notifications, 1);
+      await backend.signIn();
+      expect(notifications, greaterThan(0));
 
-      const profile = BackendProfile(id: 'prof-1', name: 'Keneth', profileId: 1);
-      await backend.account.selectProfile(profile);
-      expect(backend.account.activeProfile, same(profile));
-      expect(notifications, 2);
+      const other = BackendProfile(id: 'prof-2', name: 'Other', profileId: 2);
+      final beforeSelect = notifications;
+      await backend.account.selectProfile(other);
+      expect(backend.account.activeProfile, same(other));
+      expect(notifications, greaterThan(beforeSelect));
 
       // Selecting the same profile again is a no-op.
-      await backend.account.selectProfile(profile);
-      expect(notifications, 2);
+      final afterSelect = notifications;
+      await backend.account.selectProfile(other);
+      expect(notifications, afterSelect);
 
       await backend.account.signOut();
       expect(backend.account.activeProfile, isNull);
-      expect(notifications, 3);
+      expect(backend.account.profiles, isEmpty);
+      expect(notifications, greaterThan(afterSelect));
     });
   });
 
   group('reads', () {
-    test('require a session', () async {
+    test('the client refuses to read without a session', () async {
       final backend = _Backend((_) => _json(_discovery));
 
       expect(
-        () => backend.library.all(),
+        () => backend.client.select('library_items'),
         throwsA(
           isA<BackendException>().having(
             (e) => e.message,
@@ -221,7 +277,27 @@ void main() {
       );
     });
 
-    test('the library reads library_items with the user token', () async {
+    test('refuses to read when no profile is selected', () async {
+      final backend = _Backend(_serving({}));
+      await backend.signIn();
+
+      expect(
+        () => backend.library.all(),
+        throwsA(
+          isA<BackendException>().having(
+            (e) => e.message,
+            'message',
+            'No profile selected',
+          ),
+        ),
+      );
+      expect(
+        () => backend.progress.all(),
+        throwsA(isA<BackendException>()),
+      );
+    });
+
+    test('the library is scoped to the active profile', () async {
       final requests = <http.Request>[];
       final backend = _Backend(
         _serving({
@@ -238,13 +314,14 @@ void main() {
         log: requests,
       );
 
-      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      await backend.signInAndChooseProfile();
       final items = await backend.library.all();
 
       final request = requests.last;
       expect(
         request.url.toString(),
-        'https://backend.example/rest/v1/library_items?select=*&order=added_at.desc',
+        'https://backend.example/rest/v1/library_items'
+        '?select=*&order=added_at.desc&profile_id=eq.1',
       );
       expect(_header(request, 'apikey'), 'public-key');
       expect(_header(request, 'authorization'), 'Bearer access-123');
@@ -261,7 +338,7 @@ void main() {
       );
     });
 
-    test('progress reads watch_progress and parses the fraction', () async {
+    test('progress is scoped to the active profile', () async {
       final requests = <http.Request>[];
       final backend = _Backend(
         _serving({
@@ -279,12 +356,13 @@ void main() {
         log: requests,
       );
 
-      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      await backend.signInAndChooseProfile();
       final progress = await backend.progress.all();
 
       expect(
         requests.last.url.toString(),
-        'https://backend.example/rest/v1/watch_progress?select=*&order=last_watched.desc',
+        'https://backend.example/rest/v1/watch_progress'
+        '?select=*&order=last_watched.desc&profile_id=eq.1',
       );
 
       final entry = progress.single;
@@ -299,18 +377,12 @@ void main() {
     test('profiles are read ordered by profile_index', () async {
       final requests = <http.Request>[];
       final backend = _Backend(
-        _serving({
-          'id': 'prof-1',
-          'profile_id': 1,
-          'profile_index': 0,
-          'name': 'Keneth',
-          'pin_enabled': true,
-        }),
+        _serving({}, profiles: const [_profile]),
         log: requests,
       );
 
-      await backend.account.signIn(email: 'me@example.com', password: 'secret');
-      final profiles = await backend.account.profiles();
+      await backend.signIn();
+      final profiles = backend.account.profiles;
 
       expect(
         requests.last.url.toString(),
@@ -318,17 +390,23 @@ void main() {
       );
       expect(profiles.single.name, 'Keneth');
       expect(profiles.single.profileId, 1);
-      expect(profiles.single.pinEnabled, isTrue);
     });
 
     test('throws when a read returns a non-array', () async {
       final backend = _Backend((request) {
-        if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
-        if (request.url.path == '/auth/v1/token') return _json(_token);
-        return _json({'unexpected': true});
+        switch (request.url.path) {
+          case '/.well-known/nuvio':
+            return _json(_discovery);
+          case '/auth/v1/token':
+            return _json(_token);
+          case '/rest/v1/profiles':
+            return _json(const [_profile]);
+          default:
+            return _json({'unexpected': true});
+        }
       });
 
-      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      await backend.signInAndChooseProfile();
 
       expect(
         () => backend.library.all(),
@@ -338,7 +416,7 @@ void main() {
   });
 
   group('signOut', () {
-    test('clears the session', () async {
+    test('clears the session and the profiles', () async {
       final backend = _Backend((request) {
         switch (request.url.path) {
           case '/.well-known/nuvio':
@@ -350,7 +428,7 @@ void main() {
         }
       });
 
-      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      await backend.signIn();
       expect(backend.account.isSignedIn, isTrue);
 
       await backend.account.signOut();

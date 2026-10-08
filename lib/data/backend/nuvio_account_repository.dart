@@ -12,7 +12,10 @@ class NuvioAccountRepository extends ChangeNotifier
 
   final NuvioClient _client;
 
+  List<BackendProfile> _profiles = const <BackendProfile>[];
   BackendProfile? _activeProfile;
+  Object? _profilesError;
+  bool _isLoadingProfiles = false;
 
   @override
   Listenable get changes => this;
@@ -27,6 +30,15 @@ class NuvioAccountRepository extends ChangeNotifier
   String? get email => _client.session?.email;
 
   @override
+  List<BackendProfile> get profiles => _profiles;
+
+  @override
+  bool get isLoadingProfiles => _isLoadingProfiles;
+
+  @override
+  Object? get profilesError => _profilesError;
+
+  @override
   BackendProfile? get activeProfile => _activeProfile;
 
   @override
@@ -36,21 +48,41 @@ class NuvioAccountRepository extends ChangeNotifier
   }) async {
     final session = await _client.signIn(email: email, password: password);
     _activeProfile = null;
+    _profiles = const <BackendProfile>[];
+    _profilesError = null;
     notifyListeners();
+
+    // Loaded here so the profile picker has something to show right away. A
+    // failure is captured, never thrown: the session is valid either way.
+    await loadProfiles();
     return session;
   }
 
   @override
   Future<void> signOut() async {
     await _client.signOut();
+    _profiles = const <BackendProfile>[];
     _activeProfile = null;
+    _profilesError = null;
     notifyListeners();
   }
 
   @override
-  Future<List<BackendProfile>> profiles() async {
-    final rows = await _client.select('profiles', order: 'profile_index.asc');
-    return rows.map(BackendProfile.fromJson).toList(growable: false);
+  Future<void> loadProfiles() async {
+    if (!isSignedIn) return;
+    _isLoadingProfiles = true;
+    _profilesError = null;
+    notifyListeners();
+    try {
+      final rows = await _client.select('profiles', order: 'profile_index.asc');
+      _profiles = rows.map(BackendProfile.fromJson).toList(growable: false);
+    } on Exception catch (error) {
+      _profiles = const <BackendProfile>[];
+      _profilesError = error;
+    } finally {
+      _isLoadingProfiles = false;
+    }
+    notifyListeners();
   }
 
   @override

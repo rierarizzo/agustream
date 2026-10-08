@@ -1,5 +1,6 @@
 import 'package:agustream/app/app.dart';
 import 'package:agustream/domain/backend/backend_exception.dart';
+import 'package:agustream/domain/backend/backend_profile.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -137,7 +138,9 @@ void main() {
     expect(find.textContaining('boom'), findsOneWidget);
   });
 
-  testWidgets('reloads when the account signs in', (tester) async {
+  testWidgets('loads the library after signing in and choosing a profile', (
+    tester,
+  ) async {
     final account = FakeAccountRepository(signedIn: false);
     final library = FakeLibraryRepository(
       items: [libraryItem(id: 'tt1', name: 'Arrival')],
@@ -145,14 +148,32 @@ void main() {
 
     await openLibrary(tester, account: account, library: library);
     expect(find.text('Not signed in'), findsOneWidget);
-    expect(library.reads, 0);
 
-    // Signing in from anywhere in the app (Settings, for example) must make the
-    // library load without the screen knowing about it.
+    // Signing in is not enough: a profile has to be chosen, so the app asks.
     await account.signIn(email: 'tester@example.com', password: 'secret');
+    await tester.pumpAndSettle();
+    expect(find.text('Who is watching?'), findsOneWidget);
+
+    await tester.tap(find.text('Tester'));
     await tester.pumpAndSettle();
 
     expect(find.text('Arrival'), findsOneWidget);
+  });
+
+  testWidgets('reloads when the active profile changes', (tester) async {
+    final account = FakeAccountRepository();
+    final library = FakeLibraryRepository(
+      items: [libraryItem(id: 'tt1', name: 'Arrival')],
+    );
+
+    await openLibrary(tester, account: account, library: library);
     expect(library.reads, 1);
+
+    await account.selectProfile(
+      const BackendProfile(id: 'prof-2', name: 'Other', profileId: 2),
+    );
+    await tester.pumpAndSettle();
+
+    expect(library.reads, 2);
   });
 }

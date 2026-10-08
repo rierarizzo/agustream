@@ -42,8 +42,8 @@ Future<void> main(List<String> args) async {
 
   final client = NuvioClient(baseUrl: options.baseUrl);
   final account = NuvioAccountRepository(client);
-  final library = NuvioLibraryRepository(client);
-  final progress = NuvioProgressRepository(client);
+  final library = NuvioLibraryRepository(client, account);
+  final progress = NuvioProgressRepository(client, account);
   try {
     final connection = await client.discover();
     print(
@@ -59,7 +59,7 @@ Future<void> main(List<String> args) async {
       'expires=${session.expiresAt}',
     );
 
-    final profiles = await account.profiles();
+    final profiles = account.profiles;
     print('\nProfiles (${profiles.length}):');
     for (final profile in profiles) {
       print(
@@ -67,6 +67,18 @@ Future<void> main(List<String> args) async {
         '  profile_id=${profile.profileId} pin=${profile.pinEnabled}',
       );
     }
+
+    // The app itself asks which profile to use; the tool just takes the first
+    // one so it can read the library, and says which one it picked.
+    final first = profiles.isEmpty ? null : profiles.first;
+    if (first == null) {
+      print('Active profile: none');
+    } else {
+      await account.selectProfile(first);
+      print('Active profile: ${first.name} (profile_id=${first.profileId})');
+    }
+    final profilesError = account.profilesError;
+    if (profilesError != null) print('Profiles error: $profilesError');
 
     final items = await library.all();
     print('\nLibrary (${items.length} items):');

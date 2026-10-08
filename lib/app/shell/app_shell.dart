@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/profiles/profile_picker.dart';
 import '../../ui/widgets/title_bar.dart';
+import '../services/app_services.dart';
 import '../theme/app_theme.dart';
 import '../window/window_controller.dart';
 import 'app_section.dart';
@@ -44,39 +46,60 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: WindowController.isFullScreen,
-      builder: (context, isFullScreen, _) {
-        return Row(
-          children: [
-            if (!isFullScreen)
-              ValueListenableBuilder<AppSection>(
-                valueListenable: _selected,
-                builder: (context, section, _) =>
-                    SideRail(selected: section, onSelected: _select),
-              ),
-            Expanded(
+    final account = AppServices.of(context).account;
+    return ListenableBuilder(
+      listenable: account.changes,
+      builder: (context, _) => ValueListenableBuilder<bool>(
+        valueListenable: WindowController.isFullScreen,
+        builder: (context, isFullScreen, _) {
+          // Signed in but no profile chosen: the account data belongs to a
+          // profile, so the app waits for one instead of guessing. The rail is
+          // hidden on purpose — there is nothing to navigate to yet.
+          if (account.isSignedIn && account.activeProfile == null) {
+            // Material so the picker's ink effects have an ancestor; the gate
+            // replaces the whole content area, which normally provides it.
+            return Material(
+              color: AppColors.background,
               child: Column(
                 children: [
                   if (!isFullScreen) const TitleBar(),
-                  Expanded(
-                    // A Scaffold gives sections their Material ancestor (ink,
-                    // text style, background), hosts SnackBars, and is the base
-                    // for pushed routes too.
-                    child: Scaffold(
-                      backgroundColor: AppColors.background,
-                      body: Navigator(
-                        key: _contentNavigator,
-                        onGenerateRoute: _onGenerateRoute,
-                      ),
-                    ),
-                  ),
+                  const Expanded(child: ProfilePicker()),
                 ],
               ),
-            ),
-          ],
-        );
-      },
+            );
+          }
+
+          return Row(
+            children: [
+              if (!isFullScreen)
+                ValueListenableBuilder<AppSection>(
+                  valueListenable: _selected,
+                  builder: (context, section, _) =>
+                      SideRail(selected: section, onSelected: _select),
+                ),
+              Expanded(
+                child: Column(
+                  children: [
+                    if (!isFullScreen) const TitleBar(),
+                    Expanded(
+                      // A Scaffold gives sections their Material ancestor (ink,
+                      // text style, background), hosts SnackBars, and is the base
+                      // for pushed routes too.
+                      child: Scaffold(
+                        backgroundColor: AppColors.background,
+                        body: Navigator(
+                          key: _contentNavigator,
+                          onGenerateRoute: _onGenerateRoute,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
