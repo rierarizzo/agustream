@@ -1,12 +1,13 @@
+import 'package:agustream/app/app.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:agustream/app/app.dart';
+import 'support/fake_backend_provider.dart';
 
 void main() {
   testWidgets('shell shows the rail and switches sections', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const AgustreamApp());
+    await tester.pumpWidget(AgustreamApp(backend: FakeBackendProvider()));
 
     // The home section is selected by default.
     expect(find.text('Home'), findsOneWidget);

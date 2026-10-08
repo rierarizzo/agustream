@@ -65,4 +65,12 @@ class LibraryItem {
   final DateTime? addedAt;
 
   final int? profileId;
+
+  /// Release year, parsed from [releaseInfo] (`2019`, `2019-2023`, ...).
+  int? get year {
+    final match = _yearPattern.firstMatch(releaseInfo ?? '');
+    return match == null ? null : int.tryParse(match.group(0)!);
+  }
+
+  static final RegExp _yearPattern = RegExp(r'(?:1[89]\d\d|20\d\d)');
 }

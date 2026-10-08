@@ -60,12 +60,12 @@ class _AppShellState extends State<AppShell> {
                 children: [
                   if (!isFullScreen) const TitleBar(),
                   Expanded(
-                    // Material gives sections their Material ancestor (ink,
-                    // text style, background) and is the base for pushed
-                    // routes too.
-                    child: Material(
-                      color: AppColors.background,
-                      child: Navigator(
+                    // A Scaffold gives sections their Material ancestor (ink,
+                    // text style, background), hosts SnackBars, and is the base
+                    // for pushed routes too.
+                    child: Scaffold(
+                      backgroundColor: AppColors.background,
+                      body: Navigator(
                         key: _contentNavigator,
                         onGenerateRoute: _onGenerateRoute,
                       ),
