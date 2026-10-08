@@ -1,4 +1,4 @@
-import 'json_utils.dart';
+import '../shared/json_utils.dart';
 
 /// One playable stream returned by a `stream` resource.
 class Stream {

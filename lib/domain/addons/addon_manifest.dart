@@ -1,4 +1,4 @@
-import 'json_utils.dart';
+import '../shared/json_utils.dart';
 
 /// A Stremio addon manifest, fetched from `<base>/manifest.json`.
 class AddonManifest {

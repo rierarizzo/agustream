@@ -1,4 +1,4 @@
-import 'json_utils.dart';
+import '../shared/json_utils.dart';
 
 /// A catalog item, called a "meta preview" in Stremio terms.
 class MetaPreview {
