@@ -4,8 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:agustream/data/backend/nuvio_backend_provider.dart';
-import 'package:agustream/domain/backend/backend_provider.dart';
+import 'package:agustream/data/backend/nuvio_account_repository.dart';
+import 'package:agustream/data/backend/nuvio_client.dart';
+import 'package:agustream/data/backend/nuvio_library_repository.dart';
+import 'package:agustream/data/backend/nuvio_progress_repository.dart';
+import 'package:agustream/domain/backend/backend_exception.dart';
+import 'package:agustream/domain/backend/backend_profile.dart';
 
 const _discovery = {
   'version': 1,
@@ -35,24 +39,31 @@ String? _header(http.Request request, String name) {
   return null;
 }
 
-NuvioBackendProvider _provider(
-  http.Response Function(http.Request request) handler, {
-  List<http.Request>? log,
-}) {
-  return NuvioBackendProvider(
-    baseUrl: 'https://backend.example/',
-    httpClient: MockClient((request) async {
-      log?.add(request);
-      return handler(request);
-    }),
-  );
+/// The three repositories, sharing one mocked client.
+class _Backend {
+  _Backend(
+    http.Response Function(http.Request request) handler, {
+    List<http.Request>? log,
+  }) : client = NuvioClient(
+         baseUrl: 'https://backend.example/',
+         httpClient: MockClient((request) async {
+           log?.add(request);
+           return handler(request);
+         }),
+       ) {
+    account = NuvioAccountRepository(client);
+    library = NuvioLibraryRepository(client);
+    progress = NuvioProgressRepository(client);
+  }
+
+  final NuvioClient client;
+  late final NuvioAccountRepository account;
+  late final NuvioLibraryRepository library;
+  late final NuvioProgressRepository progress;
 }
 
 /// Handler that serves discovery + token, and [table] for any REST read.
-http.Response Function(http.Request) _serving(
-  Map<String, Object?> table, {
-  List<http.Request>? log,
-}) {
+http.Response Function(http.Request) _serving(Map<String, Object?> table) {
   return (request) {
     switch (request.url.path) {
       case '/.well-known/nuvio':
@@ -69,9 +80,9 @@ void main() {
   group('discovery', () {
     test('fetches and parses .well-known/nuvio', () async {
       final requests = <http.Request>[];
-      final provider = _provider((_) => _json(_discovery), log: requests);
+      final backend = _Backend((_) => _json(_discovery), log: requests);
 
-      final connection = await provider.discover();
+      final connection = await backend.client.discover();
 
       expect(
         requests.single.url.toString(),
@@ -83,25 +94,28 @@ void main() {
       expect(connection.selfHosted, isTrue);
       expect(connection.capabilities.emailPasswordAuth, isTrue);
       expect(connection.capabilities.tvLogin, isFalse);
-      expect(provider.connection, same(connection));
+      expect(backend.client.connection, same(connection));
     });
 
     test('throws when the discovery endpoint fails', () async {
-      final provider = _provider((_) => http.Response('nope', 500));
+      final backend = _Backend((_) => http.Response('nope', 500));
 
-      expect(() => provider.discover(), throwsA(isA<BackendException>()));
+      expect(
+        () => backend.client.discover(),
+        throwsA(isA<BackendException>()),
+      );
     });
   });
 
   group('signIn', () {
     test('discovers first, then posts email + password', () async {
       final requests = <http.Request>[];
-      final provider = _provider((request) {
+      final backend = _Backend((request) {
         if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
         return _json(_token);
       }, log: requests);
 
-      final session = await provider.signIn(
+      final session = await backend.account.signIn(
         email: 'me@example.com',
         password: 'secret',
       );
@@ -130,11 +144,12 @@ void main() {
         session.expiresAt,
         DateTime.fromMillisecondsSinceEpoch(1900000000 * 1000, isUtc: true),
       );
-      expect(provider.isSignedIn, isTrue);
+      expect(backend.account.isSignedIn, isTrue);
+      expect(backend.account.email, 'me@example.com');
     });
 
     test('surfaces the backend error message', () async {
-      final provider = _provider((request) {
+      final backend = _Backend((request) {
         if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
         return _json({
           'code': 400,
@@ -144,7 +159,7 @@ void main() {
       });
 
       expect(
-        () => provider.signIn(
+        () => backend.account.signIn(
           email: 'nobody@example.invalid',
           password: 'wrong',
         ),
@@ -157,21 +172,58 @@ void main() {
     });
   });
 
+  group('account', () {
+    test('starts with no active profile', () async {
+      final backend = _Backend(_serving({}));
+
+      expect(backend.account.activeProfile, isNull);
+    });
+
+    test('notifies when the session or the profile changes', () async {
+      final backend = _Backend((request) {
+        if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
+        return _json(_token);
+      });
+      var notifications = 0;
+      backend.account.changes.addListener(() => notifications++);
+
+      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      expect(notifications, 1);
+
+      const profile = BackendProfile(id: 'prof-1', name: 'Keneth', profileId: 1);
+      await backend.account.selectProfile(profile);
+      expect(backend.account.activeProfile, same(profile));
+      expect(notifications, 2);
+
+      // Selecting the same profile again is a no-op.
+      await backend.account.selectProfile(profile);
+      expect(notifications, 2);
+
+      await backend.account.signOut();
+      expect(backend.account.activeProfile, isNull);
+      expect(notifications, 3);
+    });
+  });
+
   group('reads', () {
     test('require a session', () async {
-      final provider = _provider((_) => _json(_discovery));
+      final backend = _Backend((_) => _json(_discovery));
 
       expect(
-        () => provider.fetchLibrary(),
+        () => backend.library.all(),
         throwsA(
-          isA<BackendException>().having((e) => e.message, 'message', 'Not signed in'),
+          isA<BackendException>().having(
+            (e) => e.message,
+            'message',
+            'Not signed in',
+          ),
         ),
       );
     });
 
-    test('fetchLibrary reads library_items with the user token', () async {
+    test('the library reads library_items with the user token', () async {
       final requests = <http.Request>[];
-      final provider = _provider(
+      final backend = _Backend(
         _serving({
           'id': 'lib-1',
           'content_id': 'tt1254207',
@@ -182,12 +234,12 @@ void main() {
           'imdb_rating': 8.2,
           'added_at': 1700000000000,
           'profile_id': 1,
-        }, log: requests),
+        }),
         log: requests,
       );
 
-      await provider.signIn(email: 'me@example.com', password: 'secret');
-      final items = await provider.fetchLibrary();
+      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      final items = await backend.library.all();
 
       final request = requests.last;
       expect(
@@ -209,9 +261,9 @@ void main() {
       );
     });
 
-    test('fetchWatchProgress parses progress and the fraction', () async {
+    test('progress reads watch_progress and parses the fraction', () async {
       final requests = <http.Request>[];
-      final provider = _provider(
+      final backend = _Backend(
         _serving({
           'id': 'p-1',
           'content_id': 'tt1',
@@ -227,8 +279,8 @@ void main() {
         log: requests,
       );
 
-      await provider.signIn(email: 'me@example.com', password: 'secret');
-      final progress = await provider.fetchWatchProgress();
+      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      final progress = await backend.progress.all();
 
       expect(
         requests.last.url.toString(),
@@ -244,9 +296,9 @@ void main() {
       expect(entry.fraction, closeTo(0.25, 1e-9));
     });
 
-    test('fetchProfiles reads profiles ordered by profile_index', () async {
+    test('profiles are read ordered by profile_index', () async {
       final requests = <http.Request>[];
-      final provider = _provider(
+      final backend = _Backend(
         _serving({
           'id': 'prof-1',
           'profile_id': 1,
@@ -257,8 +309,8 @@ void main() {
         log: requests,
       );
 
-      await provider.signIn(email: 'me@example.com', password: 'secret');
-      final profiles = await provider.fetchProfiles();
+      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      final profiles = await backend.account.profiles();
 
       expect(
         requests.last.url.toString(),
@@ -270,21 +322,24 @@ void main() {
     });
 
     test('throws when a read returns a non-array', () async {
-      final provider = _provider((request) {
+      final backend = _Backend((request) {
         if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
         if (request.url.path == '/auth/v1/token') return _json(_token);
         return _json({'unexpected': true});
       });
 
-      await provider.signIn(email: 'me@example.com', password: 'secret');
+      await backend.account.signIn(email: 'me@example.com', password: 'secret');
 
-      expect(() => provider.fetchLibrary(), throwsA(isA<BackendException>()));
+      expect(
+        () => backend.library.all(),
+        throwsA(isA<BackendException>()),
+      );
     });
   });
 
   group('signOut', () {
     test('clears the session', () async {
-      final provider = _provider((request) {
+      final backend = _Backend((request) {
         switch (request.url.path) {
           case '/.well-known/nuvio':
             return _json(_discovery);
@@ -295,13 +350,13 @@ void main() {
         }
       });
 
-      await provider.signIn(email: 'me@example.com', password: 'secret');
-      expect(provider.isSignedIn, isTrue);
+      await backend.account.signIn(email: 'me@example.com', password: 'secret');
+      expect(backend.account.isSignedIn, isTrue);
 
-      await provider.signOut();
+      await backend.account.signOut();
 
-      expect(provider.isSignedIn, isFalse);
-      expect(provider.session, isNull);
+      expect(backend.account.isSignedIn, isFalse);
+      expect(backend.account.session, isNull);
     });
   });
 }

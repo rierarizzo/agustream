@@ -1,6 +1,6 @@
 // Developer tool: sign in to a Nuvio backend and print the account data.
 //
-// Not part of the app; it exists to exercise `NuvioBackendProvider` by hand,
+// Not part of the app; it exists to exercise the Nuvio repositories by hand,
 // before there is a UI (phase 4).
 //
 // Usage:
@@ -15,8 +15,11 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 
-import 'package:agustream/data/backend/nuvio_backend_provider.dart';
-import 'package:agustream/domain/backend/backend_provider.dart';
+import 'package:agustream/data/backend/nuvio_account_repository.dart';
+import 'package:agustream/data/backend/nuvio_client.dart';
+import 'package:agustream/data/backend/nuvio_library_repository.dart';
+import 'package:agustream/data/backend/nuvio_progress_repository.dart';
+import 'package:agustream/domain/backend/backend_exception.dart';
 import 'package:agustream/domain/backend/library_item.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
 
@@ -37,9 +40,12 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  final provider = NuvioBackendProvider(baseUrl: options.baseUrl);
+  final client = NuvioClient(baseUrl: options.baseUrl);
+  final account = NuvioAccountRepository(client);
+  final library = NuvioLibraryRepository(client);
+  final progress = NuvioProgressRepository(client);
   try {
-    final connection = await provider.discover();
+    final connection = await client.discover();
     print(
       'Backend  : ${connection.backendUrl}  '
       '(service=${connection.service} v${connection.version}, '
@@ -47,13 +53,13 @@ Future<void> main(List<String> args) async {
     );
 
     print('Signing in as $email…');
-    final session = await provider.signIn(email: email, password: password);
+    final session = await account.signIn(email: email, password: password);
     print(
       'Signed in: user=${session.userId} email=${session.email} '
       'expires=${session.expiresAt}',
     );
 
-    final profiles = await provider.fetchProfiles();
+    final profiles = await account.profiles();
     print('\nProfiles (${profiles.length}):');
     for (final profile in profiles) {
       print(
@@ -62,28 +68,28 @@ Future<void> main(List<String> args) async {
       );
     }
 
-    final library = await provider.fetchLibrary();
-    print('\nLibrary (${library.length} items):');
-    for (final item in library.take(options.limit)) {
+    final items = await library.all();
+    print('\nLibrary (${items.length} items):');
+    for (final item in items.take(options.limit)) {
       print('  ${_libraryLine(item)}');
     }
-    if (library.length > options.limit) {
-      print('  … and ${library.length - options.limit} more');
+    if (items.length > options.limit) {
+      print('  … and ${items.length - options.limit} more');
     }
 
-    final progress = await provider.fetchWatchProgress();
-    print('\nWatch progress (${progress.length} entries):');
-    for (final entry in progress.take(options.limit)) {
+    final entries = await progress.all();
+    print('\nWatch progress (${entries.length} entries):');
+    for (final entry in entries.take(options.limit)) {
       print('  ${_progressLine(entry)}');
     }
-    if (progress.length > options.limit) {
-      print('  … and ${progress.length - options.limit} more');
+    if (entries.length > options.limit) {
+      print('  … and ${entries.length - options.limit} more');
     }
   } on BackendException catch (error) {
     print('\nFAILED: $error');
     exitCode = 1;
   } finally {
-    provider.close();
+    client.close();
   }
 }
 
@@ -161,7 +167,7 @@ Usage:
 Flags:
   --email=<email>      Account email       (or NUVIO_EMAIL)
   --password=<secret>  Account password    (or NUVIO_PASSWORD; visible in history)
-  --base-url=<url>     Backend URL         (default: ${NuvioBackendProvider.defaultBaseUrl})
+  --base-url=<url>     Backend URL         (default: ${NuvioClient.defaultBaseUrl})
   --limit=<n>          Rows to print       (default: 10)
   --help               Show this message
 ''';
@@ -196,7 +202,7 @@ class _Options {
     return _Options(
       baseUrl: values['base-url'] ??
           Platform.environment['NUVIO_BASE_URL'] ??
-          NuvioBackendProvider.defaultBaseUrl,
+          NuvioClient.defaultBaseUrl,
       limit: int.tryParse(values['limit'] ?? '') ?? 10,
       email: values['email'] ?? Platform.environment['NUVIO_EMAIL'],
       password: values['password'] ?? Platform.environment['NUVIO_PASSWORD'],

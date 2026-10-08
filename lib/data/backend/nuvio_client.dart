@@ -3,13 +3,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../domain/backend/backend_connection.dart';
-import '../../domain/backend/backend_profile.dart';
-import '../../domain/backend/backend_provider.dart';
+import '../../domain/backend/backend_exception.dart';
 import '../../domain/backend/backend_session.dart';
-import '../../domain/backend/library_item.dart';
-import '../../domain/backend/watch_progress.dart';
 
-/// [BackendProvider] implementation for a Nuvio backend.
+/// HTTP transport for a Nuvio backend.
 ///
 /// A Nuvio backend is a Supabase deployment, so this talks to it over plain
 /// HTTP instead of pulling in the Supabase SDK:
@@ -18,13 +15,13 @@ import '../../domain/backend/watch_progress.dart';
 /// * auth      — `POST <baseUrl>/auth/v1/token?grant_type=password`
 /// * data      — `GET  <baseUrl>/rest/v1/<table>` (PostgREST)
 ///
+/// It owns the transport state (the discovery document and the session) and is
+/// shared by the repositories in this folder, which are split by capability.
 /// Row-level security on the backend scopes every read to the signed-in user.
-class NuvioBackendProvider implements BackendProvider {
-  NuvioBackendProvider({
-    String baseUrl = defaultBaseUrl,
-    http.Client? httpClient,
-  }) : _baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), ''),
-       _http = httpClient ?? http.Client();
+class NuvioClient {
+  NuvioClient({String baseUrl = defaultBaseUrl, http.Client? httpClient})
+    : _baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), ''),
+      _http = httpClient ?? http.Client();
 
   /// Official Nuvio-hosted backend.
   static const String defaultBaseUrl = 'https://api.nuvio.tv';
@@ -35,21 +32,15 @@ class NuvioBackendProvider implements BackendProvider {
   BackendConnection? _connection;
   BackendSession? _session;
 
-  @override
+  /// Discovery document, once [discover] has run.
   BackendConnection? get connection => _connection;
 
-  @override
+  /// Signed-in session, or `null`.
   BackendSession? get session => _session;
 
-  @override
-  bool get isSignedIn => _session != null;
-
-  @override
+  /// Fetches `<baseUrl>/.well-known/nuvio` and remembers the result.
   Future<BackendConnection> discover() async {
-    final json = await _request(
-      'GET',
-      Uri.parse('$_baseUrl/.well-known/nuvio'),
-    );
+    final json = await _request('GET', Uri.parse('$_baseUrl/.well-known/nuvio'));
     if (json is! Map) {
       throw const BackendException('Unexpected discovery response');
     }
@@ -58,7 +49,7 @@ class NuvioBackendProvider implements BackendProvider {
     );
   }
 
-  @override
+  /// Signs in with email + password and remembers the session.
   Future<BackendSession> signIn({
     required String email,
     required String password,
@@ -75,7 +66,7 @@ class NuvioBackendProvider implements BackendProvider {
     return _session = BackendSession.fromJson(json.cast<String, dynamic>());
   }
 
-  @override
+  /// Drops the session, invalidating it on the backend when possible.
   Future<void> signOut() async {
     final current = _session;
     _session = null;
@@ -93,32 +84,11 @@ class NuvioBackendProvider implements BackendProvider {
     }
   }
 
-  @override
-  Future<List<BackendProfile>> fetchProfiles() async {
-    final rows = await _select('profiles', order: 'profile_index.asc');
-    return rows.map(BackendProfile.fromJson).toList(growable: false);
-  }
-
-  @override
-  Future<List<LibraryItem>> fetchLibrary() async {
-    final rows = await _select('library_items', order: 'added_at.desc');
-    return rows.map(LibraryItem.fromJson).toList(growable: false);
-  }
-
-  @override
-  Future<List<WatchProgress>> fetchWatchProgress() async {
-    final rows = await _select('watch_progress', order: 'last_watched.desc');
-    return rows.map(WatchProgress.fromJson).toList(growable: false);
-  }
-
-  /// Closes the underlying HTTP client.
-  void close() => _http.close();
-
-  Future<void> _ensureDiscovered() async {
-    if (_connection == null) await discover();
-  }
-
-  Future<List<Map<String, dynamic>>> _select(
+  /// Runs a PostgREST read on [table].
+  ///
+  /// Throws [BackendException] when there is no session: row-level security
+  /// would return nothing useful anyway.
+  Future<List<Map<String, dynamic>>> select(
     String table, {
     String? order,
   }) async {
@@ -141,6 +111,13 @@ class NuvioBackendProvider implements BackendProvider {
         .whereType<Map>()
         .map((row) => row.cast<String, dynamic>())
         .toList(growable: false);
+  }
+
+  /// Closes the underlying HTTP client.
+  void close() => _http.close();
+
+  Future<void> _ensureDiscovered() async {
+    if (_connection == null) await discover();
   }
 
   Future<Object?> _request(

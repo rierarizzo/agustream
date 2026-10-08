@@ -25,7 +25,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.didChangeDependencies();
     if (_library != null) return;
     final services = AppServices.of(context);
-    _library = LibraryController(services.backend, services.session)..load();
+    _library = LibraryController(
+      services.account,
+      services.library,
+      services.progress,
+    )..load();
   }
 
   @override

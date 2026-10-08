@@ -1,26 +1,31 @@
 import 'package:flutter/widgets.dart';
 
-import '../../domain/backend/backend_provider.dart';
-import 'session_controller.dart';
+import '../../domain/backend/account_repository.dart';
+import '../../domain/backend/library_repository.dart';
+import '../../domain/backend/progress_repository.dart';
 
-/// App-wide services, handed down the widget tree.
+/// App-wide repositories, handed down the widget tree.
 ///
-/// Screens read the backend from here instead of reaching into `data/`, which
-/// keeps the `ui → domain → data` direction described in the README and lets
-/// tests inject a fake [BackendProvider].
+/// Screens read data from here instead of reaching into `data/`, which keeps
+/// the `ui → domain → data` direction described in the README and lets tests
+/// inject in-memory implementations.
 class AppServices extends InheritedWidget {
   const AppServices({
     super.key,
-    required this.backend,
-    required this.session,
+    required this.account,
+    required this.library,
+    required this.progress,
     required super.child,
   });
 
-  /// The Nuvio backend.
-  final BackendProvider backend;
+  /// Session and profiles.
+  final AccountRepository account;
 
-  /// Sign-in state, shared by every screen that needs a session.
-  final SessionController session;
+  /// Saved titles.
+  final LibraryRepository library;
+
+  /// Watch progress.
+  final ProgressRepository progress;
 
   static AppServices of(BuildContext context) {
     final services = context.dependOnInheritedWidgetOfExactType<AppServices>();
@@ -30,5 +35,7 @@ class AppServices extends InheritedWidget {
 
   @override
   bool updateShouldNotify(AppServices oldWidget) =>
-      backend != oldWidget.backend || session != oldWidget.session;
+      account != oldWidget.account ||
+      library != oldWidget.library ||
+      progress != oldWidget.progress;
 }

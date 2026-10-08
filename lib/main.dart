@@ -5,18 +5,31 @@ import 'package:media_kit/media_kit.dart';
 
 import 'app/app.dart';
 import 'app/window/window_controller.dart';
-import 'data/backend/nuvio_backend_provider.dart';
-import 'domain/backend/backend_provider.dart';
+import 'data/backend/nuvio_account_repository.dart';
+import 'data/backend/nuvio_client.dart';
+import 'data/backend/nuvio_library_repository.dart';
+import 'data/backend/nuvio_progress_repository.dart';
+import 'domain/backend/account_repository.dart';
+import 'domain/backend/backend_exception.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await WindowController.initialize();
 
-  final backend = NuvioBackendProvider();
-  await _signInFromEnvironment(backend);
+  // One client (it owns discovery + session) shared by the repositories.
+  final client = NuvioClient();
+  final account = NuvioAccountRepository(client);
+  await _signInFromEnvironment(account);
 
-  runApp(AgustreamApp(backend: backend, initialSource: _initialSource(args)));
+  runApp(
+    AgustreamApp(
+      account: account,
+      library: NuvioLibraryRepository(client),
+      progress: NuvioProgressRepository(client),
+      initialSource: _initialSource(args),
+    ),
+  );
 }
 
 /// Development shortcut: signs in with `NUVIO_EMAIL` / `NUVIO_PASSWORD`.
@@ -30,14 +43,14 @@ Future<void> main(List<String> args) async {
 ///
 /// Credentials are read from the environment for this run only; they are never
 /// written to the repository or to disk.
-Future<void> _signInFromEnvironment(BackendProvider backend) async {
+Future<void> _signInFromEnvironment(AccountRepository account) async {
   final email = Platform.environment['NUVIO_EMAIL'];
   final password = Platform.environment['NUVIO_PASSWORD'];
   if (email == null || email.isEmpty || password == null || password.isEmpty) {
     return;
   }
   try {
-    await backend.signIn(email: email, password: password);
+    await account.signIn(email: email, password: password);
   } on BackendException catch (error) {
     debugPrint('Dev sign-in failed: $error');
   }

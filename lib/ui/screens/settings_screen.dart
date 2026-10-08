@@ -2,9 +2,9 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/services/app_services.dart';
-import '../../app/services/session_controller.dart';
 import '../../app/theme/app_theme.dart';
-import '../../domain/backend/backend_provider.dart';
+import '../../domain/backend/account_repository.dart';
+import '../../domain/backend/backend_exception.dart';
 import 'player_screen.dart';
 
 /// Settings section.
@@ -54,16 +54,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final session = AppServices.of(context).session;
+    final account = AppServices.of(context).account;
 
     return ListenableBuilder(
-      listenable: session,
+      listenable: account.changes,
       builder: (context, _) => ListView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         children: [
           Text('Settings', style: theme.textTheme.headlineMedium),
           const SizedBox(height: AppSpacing.lg),
-          _AccountCard(session: session),
+          _AccountCard(account: account),
           const SizedBox(height: AppSpacing.lg),
           _Card(
             title: 'Open a video (temporary)',
@@ -111,9 +111,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 /// Temporary: it exists so the library can be tested with a real account before
 /// the login screen is designed.
 class _AccountCard extends StatefulWidget {
-  const _AccountCard({required this.session});
+  const _AccountCard({required this.account});
 
-  final SessionController session;
+  final AccountRepository account;
 
   @override
   State<_AccountCard> createState() => _AccountCardState();
@@ -142,7 +142,7 @@ class _AccountCardState extends State<_AccountCard> {
       _error = null;
     });
     try {
-      await widget.session.signIn(email: email, password: password);
+      await widget.account.signIn(email: email, password: password);
       _password.clear();
     } on BackendException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -156,7 +156,7 @@ class _AccountCardState extends State<_AccountCard> {
   Future<void> _signOut() async {
     setState(() => _busy = true);
     try {
-      await widget.session.signOut();
+      await widget.account.signOut();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -165,12 +165,12 @@ class _AccountCardState extends State<_AccountCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final session = widget.session;
+    final account = widget.account;
 
-    if (session.isSignedIn) {
+    if (account.isSignedIn) {
       return _Card(
         title: 'Account',
-        subtitle: 'Signed in as ${session.email ?? 'your Nuvio account'}.',
+        subtitle: 'Signed in as ${account.email ?? 'your Nuvio account'}.',
         child: Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
