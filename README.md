@@ -96,7 +96,7 @@ flutter config --enable-windows-desktop
   resizable. The rest of the bar works, and dragging a maximized window restores
   it first. To resolve it completely, either handle `WM_NCHITTEST` on the Flutter
   child window in the runner (native drag + Snap Layouts) or make the window truly
-  frameless and resize from Dart. See `docs/sessions/0003_custom_title_bar.md`.
+  frameless and resize from Dart. See `docs/sessions/0003_custom_title_bar_ES.md`.
 - **Mica backdrop is currently invisible** (the title bar and `Scaffold` are
   opaque). Decide whether to keep `flutter_acrylic` or remove it.
 
