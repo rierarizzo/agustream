@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../ui/screens/home_screen.dart';
+import '../ui/widgets/title_bar.dart';
 
 /// Root widget of the application.
 ///
@@ -20,6 +21,16 @@ class AgustreamApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
+      // The custom title bar lives above the Navigator so it stays put across
+      // every route. It is transparent, letting the Mica backdrop show through.
+      builder: (context, child) {
+        return Column(
+          children: [
+            const TitleBar(),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
       home: const HomeScreen(),
     );
   }

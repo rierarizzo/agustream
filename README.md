@@ -88,6 +88,18 @@ flutter config --enable-windows-desktop
 6. **Phase 5 — Debrid:** our own `DebridProvider` + cache.
 7. **Phase 6 — Extras:** subtitles, tracking, Linux, optional P2P.
 
+## Known issues / TODO
+
+- **Custom title bar — top edge dead zone.** The top ~10 px (windowed) / ~15 px
+  (maximized) of the custom title bar receives no pointer events: Windows reserves
+  it as the `WS_THICKFRAME` resize border, so it is neither draggable nor
+  resizable. The rest of the bar works, and dragging a maximized window restores
+  it first. To resolve it completely, either handle `WM_NCHITTEST` on the Flutter
+  child window in the runner (native drag + Snap Layouts) or make the window truly
+  frameless and resize from Dart. See `docs/sessions/0003_custom_title_bar.md`.
+- **Mica backdrop is currently invisible** (the title bar and `Scaffold` are
+  opaque). Decide whether to keep `flutter_acrylic` or remove it.
+
 ## References
 
 - Stremio addon protocol: `https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/protocol.md`
