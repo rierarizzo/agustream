@@ -18,6 +18,12 @@ abstract final class WindowController {
   /// Native window title (also shown by the custom title bar).
   static const String windowTitle = 'Agustream';
 
+  /// Whether the window is currently in fullscreen.
+  ///
+  /// `window_manager` resizes the window programmatically to go fullscreen, so
+  /// it does not emit its own fullscreen event; the state is tracked here.
+  static final ValueNotifier<bool> isFullScreen = ValueNotifier<bool>(false);
+
   /// Prepares the native window: hidden caption plus Mica backdrop.
   ///
   /// Must run before `runApp`.
@@ -42,6 +48,16 @@ abstract final class WindowController {
   }
 
   static Future<void> minimize() => windowManager.minimize();
+
+  /// Enters or leaves fullscreen, keeping [isFullScreen] in sync.
+  ///
+  /// Uses `window_manager`'s implementation on purpose: its `WM_NCCALCSIZE`
+  /// handler drops the 8 px resize insets while fullscreen, whereas
+  /// `media_kit`'s own fullscreen leaves them, showing gaps on the sides.
+  static Future<void> setFullScreen(bool value) async {
+    await windowManager.setFullScreen(value);
+    isFullScreen.value = value;
+  }
 
   static Future<void> maximize() => windowManager.maximize();
 
