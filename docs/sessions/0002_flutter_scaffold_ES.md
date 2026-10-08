@@ -33,9 +33,8 @@ Tener un toolchain funcional y un proyecto Flutter Windows-only que corra.
 4. Se ajustó la configuración:
    - `.gitignore`: se quitó la regla de `pubspec.lock` para versionar el lockfile.
    - `pubspec.yaml`: se puso una `description` real.
-5. Se respaldaron los docs previos al scaffold en
-   `C:\Users\keneth\projects\agus-desktop-docs-backup`. `flutter create` **no** sobrescribió
-   el `README.md` ni el `.gitignore` existentes.
+5. Se respaldaron los docs previos al scaffold en una carpeta **fuera del repo**.
+   `flutter create` **no** sobrescribió el `README.md` ni el `.gitignore` existentes.
 
 ## Nombres generados
 
