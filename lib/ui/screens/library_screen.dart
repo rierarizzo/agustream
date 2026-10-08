@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/services/app_services.dart';
 import '../../app/theme/app_theme.dart';
 import '../../domain/backend/library_item.dart';
+import '../detail/detail_screen.dart';
 import '../library/library_controller.dart';
 import '../library/poster_tile.dart';
 
@@ -39,11 +40,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   void _open(LibraryItem item) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item.name}: the detail screen arrives in part 4.3'),
-        duration: const Duration(seconds: 2),
-      ),
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => DetailScreen(item: item)),
     );
   }
 

@@ -2,6 +2,8 @@ import 'package:agustream/app/app.dart';
 import 'package:agustream/domain/backend/backend_exception.dart';
 import 'package:agustream/domain/backend/backend_profile.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
+import 'package:agustream/ui/detail/detail_screen.dart';
+import 'package:agustream/ui/library/poster_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,12 +16,14 @@ void main() {
     FakeAccountRepository? account,
     FakeLibraryRepository? library,
     FakeProgressRepository? progress,
+    FakeMetadataRepository? metadata,
   }) async {
     await tester.pumpWidget(
       AgustreamApp(
         account: account ?? FakeAccountRepository(),
         library: library ?? FakeLibraryRepository(),
         progress: progress ?? FakeProgressRepository(),
+        metadata: metadata ?? FakeMetadataRepository(),
       ),
     );
     await tester.tap(find.byTooltip('Library'));
@@ -175,5 +179,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(library.reads, 2);
+  });
+
+  testWidgets('opens the detail when a poster is tapped', (tester) async {
+    await openLibrary(
+      tester,
+      library: FakeLibraryRepository(
+        items: [libraryItem(id: 'tt1', name: 'Arrival')],
+      ),
+    );
+
+    await tester.tap(find.byType(PosterTile));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DetailScreen), findsOneWidget);
+    expect(find.text('Play'), findsOneWidget);
   });
 }

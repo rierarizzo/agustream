@@ -63,6 +63,11 @@ class MetaDetail {
     this.runtime,
     this.genres = const [],
     this.videos = const [],
+    this.cast = const [],
+    this.director = const [],
+    this.writer = const [],
+    this.released,
+    this.country,
   });
 
   factory MetaDetail.fromJson(Map<String, dynamic> json) {
@@ -83,6 +88,16 @@ class MetaDetail {
               ?.map((entry) => MetaVideo.fromJson(toJsonObject(entry) ?? {}))
               .toList(growable: false) ??
           const [],
+      cast:
+          (json['cast'] as List?)
+              ?.map(MetaPerson.fromJson)
+              .where((person) => person.name.isNotEmpty)
+              .toList(growable: false) ??
+          const [],
+      director: stringOrList(json['director']),
+      writer: stringOrList(json['writer']),
+      released: json['released'] as String?,
+      country: json['country'] as String?,
     );
   }
 
@@ -100,6 +115,21 @@ class MetaDetail {
 
   /// Episodes for series, or a single entry for movies.
   final List<MetaVideo> videos;
+
+  /// Actors, with the character they play.
+  final List<MetaPerson> cast;
+
+  /// Director names. The protocol allows a single string or a list.
+  final List<String> director;
+
+  /// Writer names. The protocol allows a single string or a list.
+  final List<String> writer;
+
+  /// Release date, usually an ISO string.
+  final String? released;
+
+  /// Comma-separated country names.
+  final String? country;
 }
 
 /// One video of a [MetaDetail] (an episode, or the movie itself).
@@ -117,7 +147,8 @@ class MetaVideo {
   factory MetaVideo.fromJson(Map<String, dynamic> json) {
     return MetaVideo(
       id: json['id'] as String? ?? '',
-      title: json['title'] as String?,
+      // Cinemeta names episodes with `name`; the protocol uses `title`.
+      title: (json['title'] ?? json['name']) as String?,
       season: toInt(json['season']),
       episode: toInt(json['episode']),
       number: toInt(json['number']),
@@ -133,4 +164,35 @@ class MetaVideo {
   final int? number;
   final String? released;
   final String? thumbnail;
+}
+
+/// One person of a [MetaDetail]'s cast or crew.
+class MetaPerson {
+  const MetaPerson({required this.name, this.character, this.photo});
+
+  /// Accepts the object form (`{name, character, photo}`) or a bare name.
+  /// Cinemeta sends the cast as a plain list of names.
+  factory MetaPerson.fromJson(Object? value) {
+    if (value is String) return MetaPerson(name: value);
+    final json = toJsonObject(value) ?? const <String, dynamic>{};
+    return MetaPerson(
+      name: json['name'] as String? ?? '',
+      character: json['character'] as String?,
+      photo: json['photo'] as String?,
+    );
+  }
+
+  final String name;
+
+  /// Character played (cast) or role held (crew).
+  final String? character;
+
+  /// Portrait URL.
+  final String? photo;
+}
+
+/// Reads a field the protocol allows as either a single string or a list.
+List<String> stringOrList(Object? value) {
+  if (value is String) return value.isEmpty ? const [] : [value];
+  return stringList(value);
 }

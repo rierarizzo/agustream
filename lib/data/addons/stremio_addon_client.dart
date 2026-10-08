@@ -26,7 +26,7 @@ class StremioAddonException implements Exception {
 /// README); it is consumed from `domain`/`ui` through the layer above it.
 class StremioAddonClient {
   StremioAddonClient({required String baseUrl, http.Client? httpClient})
-    : baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), ''),
+    : baseUrl = normalizeAddonBaseUrl(baseUrl),
       _http = httpClient ?? http.Client();
 
   /// Addon base URL, without a trailing slash.
@@ -83,7 +83,6 @@ class StremioAddonClient {
 
   /// Closes the underlying HTTP client.
   void close() => _http.close();
-
   Uri _catalogUri({
     required String type,
     required String id,
@@ -122,4 +121,19 @@ class StremioAddonClient {
     }
     return decoded.cast<String, dynamic>();
   }
+}
+
+/// Turns an addon URL into its base URL.
+///
+/// Accepts a manifest URL (`https://x/manifest.json`), with or without a query
+/// string, or a plain base (`https://x/`), and returns `https://x`. Addons are
+/// stored as manifest URLs in the Nuvio backend, but the resource paths hang
+/// off the base.
+String normalizeAddonBaseUrl(String url) {
+  final withoutQuery = url.split('?').first;
+  const manifestSuffix = '/manifest.json';
+  final withoutManifest = withoutQuery.endsWith(manifestSuffix)
+      ? withoutQuery.substring(0, withoutQuery.length - manifestSuffix.length)
+      : withoutQuery;
+  return withoutManifest.replaceAll(RegExp(r'/+$'), '');
 }

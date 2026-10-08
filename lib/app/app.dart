@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../domain/addons/metadata_repository.dart';
 import '../domain/backend/account_repository.dart';
 import '../domain/backend/library_repository.dart';
 import '../domain/backend/progress_repository.dart';
@@ -18,6 +19,7 @@ class AgustreamApp extends StatelessWidget {
     required this.account,
     required this.library,
     required this.progress,
+    required this.metadata,
     this.initialSource,
   });
 
@@ -29,6 +31,9 @@ class AgustreamApp extends StatelessWidget {
 
   /// Watch progress.
   final ProgressRepository progress;
+
+  /// Title metadata from Stremio addons.
+  final MetadataRepository metadata;
 
   /// When set (e.g. from `--play=<source>` on the command line), the app opens
   /// straight into the player with no chrome around it. Development shortcut.
@@ -42,6 +47,7 @@ class AgustreamApp extends StatelessWidget {
       account: account,
       library: library,
       progress: progress,
+      metadata: metadata,
       child: MaterialApp(
         title: 'Agustream',
         debugShowCheckedModeBanner: false,

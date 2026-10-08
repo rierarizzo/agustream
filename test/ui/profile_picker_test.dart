@@ -12,12 +12,14 @@ void main() {
     FakeAccountRepository? account,
     FakeLibraryRepository? library,
     FakeProgressRepository? progress,
+    FakeMetadataRepository? metadata,
   }) async {
     await tester.pumpWidget(
       AgustreamApp(
         account: account ?? FakeAccountRepository(),
         library: library ?? FakeLibraryRepository(),
         progress: progress ?? FakeProgressRepository(),
+        metadata: metadata ?? FakeMetadataRepository(),
       ),
     );
     await tester.pumpAndSettle();
@@ -66,6 +68,7 @@ void main() {
         ),
         library: FakeLibraryRepository(),
         progress: FakeProgressRepository(),
+        metadata: FakeMetadataRepository(),
       ),
     );
     await tester.pump();

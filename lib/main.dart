@@ -5,7 +5,9 @@ import 'package:media_kit/media_kit.dart';
 
 import 'app/app.dart';
 import 'app/window/window_controller.dart';
+import 'data/addons/stremio_metadata_repository.dart';
 import 'data/backend/nuvio_account_repository.dart';
+import 'data/backend/nuvio_addon_repository.dart';
 import 'data/backend/nuvio_client.dart';
 import 'data/backend/nuvio_library_repository.dart';
 import 'data/backend/nuvio_progress_repository.dart';
@@ -27,6 +29,9 @@ Future<void> main(List<String> args) async {
       account: account,
       library: NuvioLibraryRepository(client, account),
       progress: NuvioProgressRepository(client, account),
+      metadata: StremioMetadataRepository(
+        addons: NuvioAddonRepository(client, account),
+      ),
       initialSource: _initialSource(args),
     ),
   );

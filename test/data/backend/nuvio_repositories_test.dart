@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:agustream/data/backend/nuvio_account_repository.dart';
+import 'package:agustream/data/backend/nuvio_addon_repository.dart';
 import 'package:agustream/data/backend/nuvio_client.dart';
 import 'package:agustream/data/backend/nuvio_library_repository.dart';
 import 'package:agustream/data/backend/nuvio_progress_repository.dart';
@@ -62,12 +63,14 @@ class _Backend {
     account = NuvioAccountRepository(client);
     library = NuvioLibraryRepository(client, account);
     progress = NuvioProgressRepository(client, account);
+    addons = NuvioAddonRepository(client, account);
   }
 
   final NuvioClient client;
   late final NuvioAccountRepository account;
   late final NuvioLibraryRepository library;
   late final NuvioProgressRepository progress;
+  late final NuvioAddonRepository addons;
 
   /// Signs in. This loads the profiles but does **not** choose one.
   Future<void> signIn() =>
@@ -410,6 +413,46 @@ void main() {
 
       expect(
         () => backend.library.all(),
+        throwsA(isA<BackendException>()),
+      );
+    });
+  });
+
+  group('addons', () {
+    test('reads the enabled addons of the active profile', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(
+        _serving({
+          'id': 'addon-1',
+          'url': 'https://v3-cinemeta.strem.io/manifest.json',
+          'name': 'Cinemeta',
+          'enabled': true,
+          'sort_order': 0,
+          'profile_id': 1,
+        }),
+        log: requests,
+      );
+
+      await backend.signInAndChooseProfile();
+      final addons = await backend.addons.all();
+
+      expect(
+        requests.last.url.toString(),
+        'https://backend.example/rest/v1/addons'
+        '?select=*&order=sort_order.asc&profile_id=eq.1&enabled=is.true',
+      );
+      expect(addons.single.url, 'https://v3-cinemeta.strem.io/manifest.json');
+      expect(addons.single.name, 'Cinemeta');
+      expect(addons.single.enabled, isTrue);
+    });
+
+    test('throws without an active profile', () async {
+      final backend = _Backend(_serving({}));
+
+      await backend.signIn();
+
+      expect(
+        () => backend.addons.all(),
         throwsA(isA<BackendException>()),
       );
     });

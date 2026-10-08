@@ -12,6 +12,7 @@ void main() {
         account: FakeAccountRepository(),
         library: FakeLibraryRepository(),
         progress: FakeProgressRepository(),
+        metadata: FakeMetadataRepository(),
       ),
     );
 

@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../domain/addons/metadata_repository.dart';
 import '../../domain/backend/account_repository.dart';
 import '../../domain/backend/library_repository.dart';
 import '../../domain/backend/progress_repository.dart';
@@ -15,6 +16,7 @@ class AppServices extends InheritedWidget {
     required this.account,
     required this.library,
     required this.progress,
+    required this.metadata,
     required super.child,
   });
 
@@ -27,6 +29,9 @@ class AppServices extends InheritedWidget {
   /// Watch progress.
   final ProgressRepository progress;
 
+  /// Title metadata from Stremio addons.
+  final MetadataRepository metadata;
+
   static AppServices of(BuildContext context) {
     final services = context.dependOnInheritedWidgetOfExactType<AppServices>();
     assert(services != null, 'No AppServices found in the widget tree');
@@ -37,5 +42,6 @@ class AppServices extends InheritedWidget {
   bool updateShouldNotify(AppServices oldWidget) =>
       account != oldWidget.account ||
       library != oldWidget.library ||
-      progress != oldWidget.progress;
+      progress != oldWidget.progress ||
+      metadata != oldWidget.metadata;
 }

@@ -1,4 +1,8 @@
+import 'package:agustream/domain/addons/meta.dart';
+import 'package:agustream/domain/addons/metadata_repository.dart';
 import 'package:agustream/domain/backend/account_repository.dart';
+import 'package:agustream/domain/backend/addon.dart';
+import 'package:agustream/domain/backend/addon_repository.dart';
 import 'package:agustream/domain/backend/backend_profile.dart';
 import 'package:agustream/domain/backend/backend_session.dart';
 import 'package:agustream/domain/backend/library_item.dart';
@@ -148,6 +152,66 @@ class FakeProgressRepository implements ProgressRepository {
   }
 }
 
+/// In-memory metadata for widget tests.
+class FakeMetadataRepository implements MetadataRepository {
+  FakeMetadataRepository({
+    this.detailResult,
+    this.similarResult = const <MetaPreview>[],
+    this.detailFailure,
+  });
+
+  /// Returned by [detail] when set.
+  final MetaDetail? detailResult;
+
+  /// Returned by [similar].
+  final List<MetaPreview> similarResult;
+
+  /// When set, [detail] throws it.
+  final Object? detailFailure;
+
+  /// Number of times the metadata has been read.
+  int detailReads = 0;
+
+  @override
+  Future<MetaDetail?> detail({
+    required String type,
+    required String id,
+    String? preferredBaseUrl,
+  }) async {
+    detailReads++;
+    final error = detailFailure;
+    if (error != null) throw error;
+    return detailResult;
+  }
+
+  @override
+  Future<List<MetaPreview>> similar({
+    required String type,
+    required String id,
+    String? preferredBaseUrl,
+    String? genre,
+  }) async {
+    return similarResult;
+  }
+}
+
+/// In-memory addons for tests.
+class FakeAddonRepository implements AddonRepository {
+  FakeAddonRepository({this.addons = const <Addon>[], this.failure});
+
+  final List<Addon> addons;
+
+  /// When set, [all] throws it.
+  final Object? failure;
+
+  @override
+  Future<List<Addon>> all() async {
+    final error = failure;
+    if (error != null) throw error;
+    return addons;
+  }
+}
+
 /// Builds a [LibraryItem] with just the fields the grid uses.
 LibraryItem libraryItem({
   required String id,
@@ -155,6 +219,7 @@ LibraryItem libraryItem({
   String contentType = 'movie',
   String? poster,
   String? releaseInfo,
+  String? addonBaseUrl,
 }) {
   return LibraryItem(
     id: id,
@@ -163,5 +228,6 @@ LibraryItem libraryItem({
     name: name,
     poster: poster,
     releaseInfo: releaseInfo,
+    addonBaseUrl: addonBaseUrl,
   );
 }
