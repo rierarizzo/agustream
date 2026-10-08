@@ -88,6 +88,12 @@ flutter config --enable-windows-desktop
 6. **Phase 5 — Debrid:** our own `DebridProvider` + cache.
 7. **Phase 6 — Extras:** subtitles, tracking, Linux, optional P2P.
 
+## Developer tools
+
+- **`tool/nuvio_login.dart`** — signs in to a Nuvio backend and prints profiles, library and
+  watch progress, so the backend client can be exercised before the UI exists. See
+  [`docs/tools/nuvio_login.md`](docs/tools/nuvio_login.md).
+
 ## Known issues / TODO
 
 - **Custom title bar — top edge dead zone.** The top ~10 px (windowed) / ~15 px
