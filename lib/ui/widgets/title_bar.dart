@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../app/window/window_controller.dart';
 
 /// Height of the custom title bar, matching the Windows 11 caption.
@@ -15,10 +16,11 @@ const double kTitleBarHeight = 32;
 /// The background is opaque on purpose: a transparent title bar is not repainted
 /// when the window is resized, which leaves the previous caption glyphs behind
 /// as "ghosting" artifacts.
+///
+/// Like the reference UI, the bar shows only the window controls; the rest is a
+/// drag area (see [_TitleBarDragArea]).
 class TitleBar extends StatefulWidget {
-  const TitleBar({super.key, this.title = WindowController.windowTitle});
-
-  final String title;
+  const TitleBar({super.key});
 
   @override
   State<TitleBar> createState() => _TitleBarState();
@@ -58,7 +60,7 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
     final theme = Theme.of(context);
 
     return Material(
-      color: theme.colorScheme.surface,
+      color: AppColors.background,
       child: SizedBox(
         height: kTitleBarHeight,
         child: Row(
@@ -66,28 +68,7 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
             Expanded(
               child: _TitleBarDragArea(
                 isMaximized: _isMaximized,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.play_circle_fill,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        widget.title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.9,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child: const SizedBox.expand(),
               ),
             ),
             WindowCaptionButton.minimize(

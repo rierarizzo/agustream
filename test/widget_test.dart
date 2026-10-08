@@ -1,14 +1,27 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:agustream/app/app.dart';
 
 void main() {
-  testWidgets('app boots and shows the home screen', (WidgetTester tester) async {
+  testWidgets('shell shows the rail and switches sections', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const AgustreamApp());
 
-    expect(find.text('Play URL'), findsOneWidget);
-    expect(find.text('Open local file'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
+    // The home section is selected by default.
+    expect(find.text('Home'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Library'));
+    await tester.pumpAndSettle();
+
+    // The library section replaces it, and home is offstage.
+    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('Home'), findsNothing);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsWidgets);
+    expect(find.text('Library'), findsNothing);
   });
 }
