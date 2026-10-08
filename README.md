@@ -10,7 +10,7 @@ is compatible with the **Stremio addon protocol**, and plays with **libmpv**.
 - Plays with **libmpv** (through `media_kit`), with debrid as the primary source.
 - Is **complementary to Nuvio**, not a replacement.
 
-**Working name:** `agus-desktop` (folder) / Dart package: `agus_desktop`.
+**Working name:** `agus-desktop` (folder) / Dart package: `agustream`.
 
 ## Motivation
 
