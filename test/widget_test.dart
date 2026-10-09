@@ -13,6 +13,7 @@ void main() {
         library: FakeLibraryRepository(),
         progress: FakeProgressRepository(),
         metadata: FakeMetadataRepository(),
+        streams: FakeStreamRepository(),
       ),
     );
 

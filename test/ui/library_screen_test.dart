@@ -17,6 +17,7 @@ void main() {
     FakeLibraryRepository? library,
     FakeProgressRepository? progress,
     FakeMetadataRepository? metadata,
+    FakeStreamRepository? streams,
   }) async {
     await tester.pumpWidget(
       AgustreamApp(
@@ -24,6 +25,7 @@ void main() {
         library: library ?? FakeLibraryRepository(),
         progress: progress ?? FakeProgressRepository(),
         metadata: metadata ?? FakeMetadataRepository(),
+        streams: streams ?? FakeStreamRepository(),
       ),
     );
     await tester.tap(find.byTooltip('Library'));

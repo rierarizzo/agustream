@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../app/services/app_services.dart';
 import '../../app/theme/app_theme.dart';
 import '../../domain/addons/meta.dart';
+import '../../domain/addons/stream.dart';
 import '../../domain/backend/library_item.dart';
+import '../screens/player_screen.dart';
+import '../streams/streams_dialog.dart';
 import 'detail_controller.dart';
 import 'detail_sections.dart';
 
@@ -39,7 +42,64 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _back() => Navigator.of(context).maybePop();
 
-  void _play() => _message('Streams arrive in part 4.4');
+  void _play() {
+    final detail = _detail!;
+    if (detail.isSeries && detail.episodes.isNotEmpty) {
+      _playEpisode(detail.episodes.first);
+      return;
+    }
+    _openStreams(
+      type: detail.item.contentType,
+      id: detail.item.contentId,
+      title: detail.name,
+    );
+  }
+
+  void _playEpisode(MetaVideo video) {
+    final detail = _detail!;
+    _openStreams(
+      type: 'series',
+      id: video.id,
+      title: '${detail.name} · ${video.title ?? 'Episode'}',
+    );
+  }
+
+  /// Opens the stream picker and plays the chosen source.
+  Future<void> _openStreams({
+    required String type,
+    required String id,
+    required String title,
+  }) async {
+    final repository = AppServices.of(context).streams;
+    final detail = _detail!;
+    final selected = await showDialog<Stream>(
+      context: context,
+      useRootNavigator: false,
+      barrierColor: Colors.black54,
+      builder: (_) => StreamsDialog(
+        streams: repository,
+        type: type,
+        id: id,
+        title: title,
+        year: detail.year?.toString(),
+        background: detail.background,
+      ),
+    );
+    if (!mounted || selected == null) return;
+    _playStream(selected);
+  }
+
+  void _playStream(Stream stream) {
+    final url = stream.url;
+    if (url == null || url.isEmpty) {
+      _message('This source cannot be played yet (torrent or external link).');
+      return;
+    }
+    // Stopgap until the integrated player (part 4.5).
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => PlayerScreen(source: url)),
+    );
+  }
 
   void _openSimilar(MetaPreview preview) {
     final current = _detail!;
@@ -91,7 +151,7 @@ class _DetailScreenState extends State<DetailScreen> {
             if (detail.isSeries && detail.episodes.isNotEmpty)
               EpisodesSection(
                 videos: detail.episodes,
-                onPlayEpisode: (_) => _message('Streams arrive in part 4.4'),
+                onPlayEpisode: _playEpisode,
               ),
             if (detail.cast.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.lg),

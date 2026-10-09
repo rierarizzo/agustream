@@ -10,6 +10,7 @@ class Stream {
     this.externalUrl,
     this.name,
     this.title,
+    this.description,
     this.behaviorHints,
   });
 
@@ -23,6 +24,7 @@ class Stream {
       externalUrl: json['externalUrl'] as String?,
       name: json['name'] as String?,
       title: json['title'] as String?,
+      description: json['description'] as String?,
       behaviorHints: hints == null ? null : StreamBehaviorHints.fromJson(hints),
     );
   }
@@ -42,6 +44,12 @@ class Stream {
 
   /// Longer label, usually the file name or quality.
   final String? title;
+
+  /// Formatted, multi-line details produced by the addon's formatter.
+  ///
+  /// AIOStreams puts the configured format here (quality, HDR/audio tags, size,
+  /// languages...), so it is shown as-is instead of being parsed.
+  final String? description;
 
   final StreamBehaviorHints? behaviorHints;
 

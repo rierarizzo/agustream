@@ -1,6 +1,8 @@
 import 'package:agustream/app/services/app_services.dart';
 import 'package:agustream/app/theme/app_theme.dart';
 import 'package:agustream/domain/addons/meta.dart';
+import 'package:agustream/domain/addons/stream.dart';
+import 'package:agustream/domain/addons/stream_repository.dart';
 import 'package:agustream/domain/backend/library_item.dart';
 import 'package:agustream/ui/detail/detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +16,7 @@ void main() {
     WidgetTester tester, {
     required LibraryItem item,
     required FakeMetadataRepository metadata,
+    FakeStreamRepository? streams,
   }) async {
     await tester.pumpWidget(
       AppServices(
@@ -21,6 +24,7 @@ void main() {
         library: FakeLibraryRepository(),
         progress: FakeProgressRepository(),
         metadata: metadata,
+        streams: streams ?? FakeStreamRepository(),
         child: MaterialApp(
           theme: AppTheme.dark(),
           home: Scaffold(body: DetailScreen(item: item)),
@@ -95,17 +99,28 @@ void main() {
     expect(find.text('Apocalypse'), findsOneWidget);
   });
 
-  testWidgets('Play shows a placeholder message', (tester) async {
+  testWidgets('Play opens the stream picker', (tester) async {
+    final streams = FakeStreamRepository(
+      groups: const [
+        StreamGroup(
+          addonName: 'Addon A',
+          streams: [Stream(url: 'https://a/1', title: '1080p')],
+        ),
+      ],
+    );
+
     await pumpDetail(
       tester,
       item: libraryItem(id: 'tt1', name: 'Arrival'),
       metadata: FakeMetadataRepository(),
+      streams: streams,
     );
 
     await tester.tap(find.text('Play'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('Streams arrive in part 4.4'), findsOneWidget);
+    expect(find.text('1080p'), findsOneWidget);
+    expect(streams.reads, 1);
   });
 
   testWidgets('shows the episode list for a series', (tester) async {

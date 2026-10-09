@@ -90,6 +90,14 @@ class DetailController extends ChangeNotifier {
 
   List<MetaPreview> get similar => _similar;
 
+  /// Release year parsed from [releaseInfo], when present.
+  int? get year {
+    final match = RegExp(
+      r'(?:1[89]\d\d|20\d\d)',
+    ).firstMatch(releaseInfo ?? '');
+    return match == null ? null : int.tryParse(match.group(0)!);
+  }
+
   /// Loads the metadata and, when possible, the "similar" row.
   ///
   /// Does nothing when already loaded, unless [force].

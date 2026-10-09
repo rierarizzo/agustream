@@ -1,5 +1,6 @@
 import 'package:agustream/domain/addons/meta.dart';
 import 'package:agustream/domain/addons/metadata_repository.dart';
+import 'package:agustream/domain/addons/stream_repository.dart';
 import 'package:agustream/domain/backend/account_repository.dart';
 import 'package:agustream/domain/backend/addon.dart';
 import 'package:agustream/domain/backend/addon_repository.dart';
@@ -190,6 +191,30 @@ class FakeMetadataRepository implements MetadataRepository {
     String? genre,
   }) async {
     return similarResult;
+  }
+}
+
+/// In-memory streams for widget tests.
+class FakeStreamRepository implements StreamRepository {
+  FakeStreamRepository({this.groups = const <StreamGroup>[], this.failure});
+
+  final List<StreamGroup> groups;
+
+  /// When set, [all] throws it.
+  final Object? failure;
+
+  /// Number of times the streams have been read.
+  int reads = 0;
+
+  @override
+  Future<List<StreamGroup>> all({
+    required String type,
+    required String id,
+  }) async {
+    reads++;
+    final error = failure;
+    if (error != null) throw error;
+    return groups;
   }
 }
 
