@@ -38,17 +38,34 @@ Revisando el código de Nuvio (`NuvioMobile`) y su schema self-host
 - El metadata **no depende de un addon fijo**: se busca `meta` entre **todos los
   addons habilitados** de la cuenta (tabla `addons`), en orden, y el primero que
   responde gana.
-- **Cinemeta** es el addon de metadata que Nuvio instala por defecto, pero no es
-  obligatorio: con un addon propio que traiga `meta` alcanza.
+- **Nada de proveedores incrustados**: no hay fallback a Cinemeta en el código.
+  Si la cuenta no tiene ningún addon que sirva `meta`, no hay metadata. Nuvio sí
+  instala Cinemeta por defecto, pero eso es de la cuenta, no del cliente.
+- **No se prioriza por `addon_base_url`**: la metadata sale siempre del primer
+  addon de la lista activa, no del addon con el que se agregó el título.
 - Los addons se guardan como **URL de manifest** (`.../manifest.json`), y los
   recursos cuelgan de la base sin `/manifest.json`.
 
-Además, Cinemeta devuelve `cast` como **lista de strings** y los episodios usan
+Algunos addons devuelven `cast` como **lista de strings** y los episodios usan
 `name` (no `title`), cosas que el parser no manejaba.
+
+El caso que faltaba era **AIOMetadata** (lo que se usa dentro de AIOStreams):
+guarda los créditos ricos en el objeto **no estándar** `app_extras` —
+`app_extras.cast` (con `photo` y `character`), `app_extras.directors` y
+`app_extras.writers`—, y Nuvio lo lee así (`MetaDetailsParser`). El parser solo
+miraba `cast`/`director`/`writer` de nivel superior, por eso aparecía el crew
+(que sí viene arriba) y no el cast. Ahora `MetaDetail` fusiona `app_extras` con
+el nivel superior, sin duplicados y con `app_extras` ganando (conserva la foto).
+
+Además, el protocolo marca `cast`/`director`/`writer` como deprecados y propone
+`links` (`{name, category, url}`). También se leen sus categorías
+`actor`/`cast`, `director(s)` y `writer(s)`/`screenplay` —AIOMetadata usa
+`Cast`/`Directors`/`Writers`—. El orden de prioridad es:
+`app_extras` → nivel superior → `links`.
 
 ## Archivos
 
-**Nuevos**
+### Nuevos
 
 | Archivo | Qué |
 | --- | --- |
@@ -64,7 +81,7 @@ Además, Cinemeta devuelve `cast` como **lista de strings** y los episodios usan
 | `test/data/addons/stremio_metadata_repository_test.dart` | Candidatos y fallback |
 | `test/ui/detail_screen_test.dart` | 4 tests de la pantalla |
 
-**Modificados**
+### Modificados
 
 | Archivo | Cambio |
 | --- | --- |
@@ -82,15 +99,15 @@ Además, Cinemeta devuelve `cast` como **lista de strings** y los episodios usan
 ## Verificación
 
 - `flutter analyze` sin problemas.
-- `flutter test`: **60 tests** (eran 44).
+- `flutter test`: **64 tests** (eran 44).
 - `flutter build windows --debug` correcto.
-- Verificado con una cuenta real (AIOStreams self-hosted): aparecen cast, crew,
-  details y episodios.
+- Verificado con una cuenta real (AIOStreams self-hosted): aparecen crew, details
+  y episodios. El cast necesitó el parseo de `app_extras` (ver arriba).
 
 ## Limitaciones conocidas
 
-1. **Fotos del reparto**: Cinemeta no las trae, así que los avatares usan la
-   inicial. Igualar la referencia requiere TMDB (lo que usa Nuvio).
+1. **Fotos del reparto**: dependen del addon. AIOMetadata las trae
+   (`app_extras.cast[].photo`); Cinemeta no, y ahí los avatares usan la inicial.
 2. **"More like this"**: usa el catálogo "Popular" por género del addon de
    metadata; no es la fila TMDB/Trakt de Nuvio.
 3. **Config en el query del manifest**: `normalizeAddonBaseUrl` descarta el query
