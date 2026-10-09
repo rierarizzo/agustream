@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../domain/addons/catalog_repository.dart';
 import '../domain/addons/metadata_repository.dart';
 import '../domain/addons/stream_repository.dart';
 import '../domain/backend/account_repository.dart';
@@ -22,6 +23,7 @@ class AgustreamApp extends StatelessWidget {
     required this.progress,
     required this.metadata,
     required this.streams,
+    required this.catalogs,
     this.initialSource,
   });
 
@@ -40,6 +42,9 @@ class AgustreamApp extends StatelessWidget {
   /// Playable sources from Stremio addons.
   final StreamRepository streams;
 
+  /// Catalogs exposed by Stremio addons.
+  final CatalogRepository catalogs;
+
   /// When set (e.g. from `--play=<source>` on the command line), the app opens
   /// straight into the player with no chrome around it. Development shortcut.
   final String? initialSource;
@@ -54,6 +59,7 @@ class AgustreamApp extends StatelessWidget {
       progress: progress,
       metadata: metadata,
       streams: streams,
+      catalogs: catalogs,
       child: MaterialApp(
         title: 'Agustream',
         debugShowCheckedModeBanner: false,

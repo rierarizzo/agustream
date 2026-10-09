@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import '../../app/services/app_services.dart';
 import '../../app/theme/app_theme.dart';
 import '../../domain/addons/meta.dart';
-import '../../domain/addons/stream.dart';
 import '../../domain/backend/library_item.dart';
-import '../screens/player_screen.dart';
-import '../streams/streams_dialog.dart';
+import '../streams/open_streams.dart';
 import 'detail_controller.dart';
 import 'detail_sections.dart';
 
@@ -69,35 +67,16 @@ class _DetailScreenState extends State<DetailScreen> {
     required String type,
     required String id,
     required String title,
-  }) async {
-    final repository = AppServices.of(context).streams;
+  }) {
     final detail = _detail!;
-    final selected = await showDialog<Stream>(
-      context: context,
-      useRootNavigator: false,
-      barrierColor: Colors.black54,
-      builder: (_) => StreamsDialog(
-        streams: repository,
-        type: type,
-        id: id,
-        title: title,
-        year: detail.year?.toString(),
-        background: detail.background,
-      ),
-    );
-    if (!mounted || selected == null) return;
-    _playStream(selected);
-  }
-
-  void _playStream(Stream stream) {
-    final url = stream.url;
-    if (url == null || url.isEmpty) {
-      _message('This source cannot be played yet (torrent or external link).');
-      return;
-    }
-    // Stopgap until the integrated player (part 4.5).
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => PlayerScreen(source: url)),
+    return openStreamsDialog(
+      context,
+      streams: AppServices.of(context).streams,
+      type: type,
+      id: id,
+      title: title,
+      year: detail.year?.toString(),
+      background: detail.background,
     );
   }
 
@@ -119,12 +98,6 @@ class _DetailScreenState extends State<DetailScreen> {
     );
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => DetailScreen(item: item)),
-    );
-  }
-
-  void _message(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
     );
   }
 

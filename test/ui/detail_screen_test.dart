@@ -25,6 +25,7 @@ void main() {
         progress: FakeProgressRepository(),
         metadata: metadata,
         streams: streams ?? FakeStreamRepository(),
+        catalogs: FakeCatalogRepository(),
         child: MaterialApp(
           theme: AppTheme.dark(),
           home: Scaffold(body: DetailScreen(item: item)),

@@ -22,6 +22,7 @@ void main() {
         progress: progress ?? FakeProgressRepository(),
         metadata: metadata ?? FakeMetadataRepository(),
         streams: streams ?? FakeStreamRepository(),
+        catalogs: FakeCatalogRepository(),
       ),
     );
     await tester.pumpAndSettle();
@@ -72,6 +73,7 @@ void main() {
         progress: FakeProgressRepository(),
         metadata: FakeMetadataRepository(),
         streams: FakeStreamRepository(),
+        catalogs: FakeCatalogRepository(),
       ),
     );
     await tester.pump();

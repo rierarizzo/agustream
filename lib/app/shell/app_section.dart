@@ -10,7 +10,6 @@ enum AppSection {
   search('Search', Icons.search, Icons.search),
   library('Library', Icons.favorite_border, Icons.favorite),
   calendar('Calendar', Icons.calendar_today_outlined, Icons.calendar_today),
-  history('History', Icons.history, Icons.history),
   settings('Settings', Icons.settings_outlined, Icons.settings);
 
   const AppSection(this.label, this.icon, this.selectedIcon);

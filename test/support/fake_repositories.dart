@@ -1,3 +1,4 @@
+import 'package:agustream/domain/addons/catalog_repository.dart';
 import 'package:agustream/domain/addons/meta.dart';
 import 'package:agustream/domain/addons/metadata_repository.dart';
 import 'package:agustream/domain/addons/stream_repository.dart';
@@ -191,6 +192,45 @@ class FakeMetadataRepository implements MetadataRepository {
     String? genre,
   }) async {
     return similarResult;
+  }
+}
+
+/// In-memory catalogs for widget tests.
+class FakeCatalogRepository implements CatalogRepository {
+  FakeCatalogRepository({
+    this.catalogsResult = const <CatalogRef>[],
+    this.itemsResult = const <MetaPreview>[],
+    this.itemsBySkip,
+    this.failure,
+  });
+
+  final List<CatalogRef> catalogsResult;
+  final List<MetaPreview> itemsResult;
+
+  /// When set, [items] returns the page for the requested `skip` offset.
+  final Map<int, List<MetaPreview>>? itemsBySkip;
+
+  /// When set, both methods throw it.
+  final Object? failure;
+
+  @override
+  Future<List<CatalogRef>> catalogs() async {
+    final error = failure;
+    if (error != null) throw error;
+    return catalogsResult;
+  }
+
+  @override
+  Future<List<MetaPreview>> items(
+    CatalogRef ref, {
+    Map<String, String>? extra,
+  }) async {
+    final error = failure;
+    if (error != null) throw error;
+    final bySkip = itemsBySkip;
+    if (bySkip == null) return itemsResult;
+    final skip = int.tryParse(extra?['skip'] ?? '0') ?? 0;
+    return bySkip[skip] ?? const <MetaPreview>[];
   }
 }
 

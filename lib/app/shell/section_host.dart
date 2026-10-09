@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/home/home_screen.dart';
 import '../../ui/screens/library_screen.dart';
 import '../../ui/screens/section_placeholder.dart';
 import '../../ui/screens/settings_screen.dart';
@@ -49,6 +50,7 @@ class _SectionHostState extends State<SectionHost> {
 
   Widget _screenFor(AppSection section) {
     return switch (section) {
+      AppSection.home => const HomeScreen(),
       AppSection.library => const LibraryScreen(),
       AppSection.settings => const SettingsScreen(),
       _ => SectionPlaceholder(section: section),

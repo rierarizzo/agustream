@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../domain/addons/catalog_repository.dart';
 import '../../domain/addons/metadata_repository.dart';
 import '../../domain/addons/stream_repository.dart';
 import '../../domain/backend/account_repository.dart';
@@ -19,6 +20,7 @@ class AppServices extends InheritedWidget {
     required this.progress,
     required this.metadata,
     required this.streams,
+    required this.catalogs,
     required super.child,
   });
 
@@ -37,6 +39,9 @@ class AppServices extends InheritedWidget {
   /// Playable sources from Stremio addons.
   final StreamRepository streams;
 
+  /// Catalogs exposed by Stremio addons.
+  final CatalogRepository catalogs;
+
   static AppServices of(BuildContext context) {
     final services = context.dependOnInheritedWidgetOfExactType<AppServices>();
     assert(services != null, 'No AppServices found in the widget tree');
@@ -49,5 +54,6 @@ class AppServices extends InheritedWidget {
       library != oldWidget.library ||
       progress != oldWidget.progress ||
       metadata != oldWidget.metadata ||
-      streams != oldWidget.streams;
+      streams != oldWidget.streams ||
+      catalogs != oldWidget.catalogs;
 }

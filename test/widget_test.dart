@@ -1,4 +1,5 @@
 import 'package:agustream/app/app.dart';
+import 'package:agustream/ui/home/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_repositories.dart';
@@ -14,18 +15,19 @@ void main() {
         progress: FakeProgressRepository(),
         metadata: FakeMetadataRepository(),
         streams: FakeStreamRepository(),
+        catalogs: FakeCatalogRepository(),
       ),
     );
 
     // The home section is selected by default.
-    expect(find.text('Home'), findsOneWidget);
+    expect(find.byType(HomeScreen), findsOneWidget);
 
     await tester.tap(find.byTooltip('Library'));
     await tester.pumpAndSettle();
 
     // The library section replaces it, and home is offstage.
     expect(find.text('Library'), findsOneWidget);
-    expect(find.text('Home'), findsNothing);
+    expect(find.byType(HomeScreen), findsNothing);
 
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();

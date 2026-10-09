@@ -1,3 +1,4 @@
+import '../addons/meta.dart';
 import '../shared/json_utils.dart';
 
 /// One saved title in the Nuvio library (`library_items`).
@@ -37,6 +38,25 @@ class LibraryItem {
       addonBaseUrl: json['addon_base_url'] as String?,
       addedAt: toDateTimeMillis(json['added_at']),
       profileId: toInt(json['profile_id']),
+    );
+  }
+
+  /// Builds a library item from a catalog preview, so a title found outside
+  /// the library (a catalog, a "similar" row) opens the same detail screen.
+  factory LibraryItem.fromPreview(MetaPreview preview) {
+    return LibraryItem(
+      id: preview.id,
+      contentId: preview.id,
+      contentType: preview.type,
+      name: preview.name,
+      poster: preview.poster,
+      posterShape: preview.posterShape,
+      background: preview.background,
+      logo: preview.logo,
+      description: preview.description,
+      releaseInfo: preview.releaseInfo,
+      imdbRating: preview.imdbRating,
+      genres: preview.genres,
     );
   }
 
