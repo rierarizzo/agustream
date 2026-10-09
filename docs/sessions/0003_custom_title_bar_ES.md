@@ -150,7 +150,7 @@ muchas veces.
 tuvo efecto**: la ventana top-level nunca recibe el mensaje, porque el view de Flutter es una
 **ventana hija** que se queda con el puntero. El experimento se revirtió.
 
-**Opciones para cerrarlo:**
+Opciones para cerrarlo:
 
 - **Opción B — `WM_NCHITTEST` en la ventana hija de Flutter (mejor resultado).** Subclasear
   la hija (`SetWindowSubclass`) en el runner y devolver `HTCAPTION` para la franja de la

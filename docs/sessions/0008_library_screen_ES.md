@@ -87,7 +87,7 @@ shell queda idéntico. **No cambió ninguna dependencia.**
 
 ## Archivos
 
-**Nuevos**
+### Nuevos
 
 | Archivo | Qué |
 | --- | --- |
@@ -99,7 +99,7 @@ shell queda idéntico. **No cambió ninguna dependencia.**
 | `test/support/fake_backend_provider.dart` | `BackendProvider` en memoria para tests |
 | `test/ui/library_screen_test.dart` | 6 tests de la sección |
 
-**Modificados**
+### Modificados
 
 | Archivo | Cambio |
 | --- | --- |

@@ -45,7 +45,7 @@ lib/
     └── player/     # media_kit wrapper -> PlayerService
 ```
 
-**Rules:**
+### Rules
 
 1. The **UI never talks HTTP directly**; it uses `data/` and `domain/`.
 2. The **Nuvio backend is isolated** behind an interface (`BackendProvider`); only that

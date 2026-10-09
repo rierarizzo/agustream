@@ -54,7 +54,7 @@ tentación es parsear heurísticamente, pero no hace falta:
 
 ## Archivos
 
-**Nuevos**
+### Nuevos
 
 | Archivo | Qué |
 | --- | --- |
@@ -66,7 +66,7 @@ tentación es parsear heurísticamente, pero no hace falta:
 | `test/domain/addons/stream_test.dart` | `description` del stream |
 | `test/ui/streams_dialog_test.dart` | 5 tests del diálogo |
 
-**Modificados**
+### Modificados
 
 | Archivo | Cambio |
 | --- | --- |

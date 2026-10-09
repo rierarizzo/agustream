@@ -32,7 +32,7 @@ $env:NUVIO_EMAIL="you@example.com"; $env:NUVIO_PASSWORD="secret"; dart run tool/
 dart run tool/nuvio_login.dart --email=you@example.com
 ```
 
-**Flags:**
+### Flags
 
 | Flag | Meaning | Fallback |
 | --- | --- | --- |

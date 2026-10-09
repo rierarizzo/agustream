@@ -76,7 +76,7 @@ de login de Settings también usa `account.changes`.
 
 ## Archivos
 
-**Nuevos**
+### Nuevos
 
 | Archivo | Qué |
 | --- | --- |
@@ -91,7 +91,7 @@ de login de Settings también usa `account.changes`.
 | `test/data/backend/nuvio_repositories_test.dart` | Reemplaza el test del provider |
 | `test/support/fake_repositories.dart` | Fakes por capacidad |
 
-**Eliminados**
+### Eliminados
 
 | Archivo | Motivo |
 | --- | --- |
@@ -101,7 +101,7 @@ de login de Settings también usa `account.changes`.
 | `test/data/backend/nuvio_backend_provider_test.dart` | Reemplazado |
 | `test/support/fake_backend_provider.dart` | Reemplazado por fakes por capacidad |
 
-**Modificados**
+### Modificados
 
 | Archivo | Cambio |
 | --- | --- |

@@ -82,14 +82,14 @@ recargar al cambiar de perfil salió gratis.
 
 ## Archivos
 
-**Nuevos**
+### Nuevos
 
 | Archivo | Qué |
 | --- | --- |
 | `lib/ui/profiles/profile_picker.dart` | El selector de perfiles (gate) |
 | `test/ui/profile_picker_test.dart` | 5 tests del gate |
 
-**Modificados**
+### Modificados
 
 | Archivo | Cambio |
 | --- | --- |
