@@ -130,7 +130,7 @@ void main() {
     expect(items.map((item) => item.id), ['tt2']);
     expect(
       catalogRequest.toString(),
-      'https://addon.example/catalog/movie/top/genre%3DAction.json',
+      'https://addon.example/catalog/movie/top/genre=Action.json',
     );
   });
 

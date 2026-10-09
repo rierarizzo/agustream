@@ -90,10 +90,12 @@ class StremioAddonClient {
   }) {
     final path = '$baseUrl/catalog/$type/$id';
     if (extra == null || extra.isEmpty) return Uri.parse('$path.json');
-    final encoded = extra.entries
-        .map((entry) => '${entry.key}=${entry.value}')
+    // The extra segment keeps `=` and `&` raw (AIOStreams and Nuvio do not
+    // decode a fully-encoded segment); only the values are encoded.
+    final segment = extra.entries
+        .map((entry) => '${entry.key}=${Uri.encodeComponent(entry.value)}')
         .join('&');
-    return Uri.parse('$path/${Uri.encodeComponent(encoded)}.json');
+    return Uri.parse('$path/$segment.json');
   }
 
   Future<Map<String, dynamic>> _getJson(Uri uri) async {

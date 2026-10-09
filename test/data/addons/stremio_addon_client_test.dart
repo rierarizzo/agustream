@@ -54,7 +54,7 @@ void main() {
 
     expect(
       requested.toString(),
-      'https://addon.example/catalog/movie/top/search%3Dbatman%26skip%3D0.json',
+      'https://addon.example/catalog/movie/top/search=batman&skip=0.json',
     );
     expect(items.single.name, 'A');
     expect(items.single.imdbRating, 7.9);
