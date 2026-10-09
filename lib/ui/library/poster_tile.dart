@@ -110,10 +110,10 @@ class _PosterTileState extends State<PosterTile> {
                 item.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge,
+                style: PosterCaption.title(theme.textTheme),
               ),
               if (year != null)
-                Text('$year', style: theme.textTheme.bodyMedium),
+                Text('$year', style: PosterCaption.year(theme.textTheme)),
             ],
           ),
         ),

@@ -22,6 +22,12 @@ abstract final class AppColors {
   static const Color textPrimary = Color(0xFFF5F5F7);
   static const Color textSecondary = Color(0xFF9A9AA4);
 
+  /// Movie title under a poster.
+  static const Color posterTitle = Color(0xFFAFB0B0);
+
+  /// Release year under a poster.
+  static const Color posterYear = Color(0xFF62605D);
+
   static const Color divider = Color(0xFF26262B);
 }
 
@@ -50,6 +56,25 @@ abstract final class AppSizes {
   static const double railButton = 48;
 }
 
+/// Text styles for the title and year shown under poster cards.
+///
+/// Derived from the theme's text styles (so the typeface and weight are kept)
+/// with a slightly smaller size and a tighter line height, so the year sits
+/// closer to the title. The global `TextTheme` is left untouched.
+abstract final class PosterCaption {
+  static TextStyle? title(TextTheme textTheme) => textTheme.bodyLarge?.copyWith(
+        fontSize: 15,
+        height: 1.2,
+        color: AppColors.posterTitle,
+      );
+
+  static TextStyle? year(TextTheme textTheme) => textTheme.bodyMedium?.copyWith(
+        fontSize: 13,
+        height: 1.2,
+        color: AppColors.posterYear,
+      );
+}
+
 abstract final class AppTheme {
   /// The app's dark theme.
   static ThemeData dark() {
@@ -66,6 +91,9 @@ abstract final class AppTheme {
 
     return ThemeData(
       colorScheme: colorScheme,
+      // UI typeface (IBM Plex Sans), with a system fallback stack.
+      fontFamily: 'IBM Plex Sans',
+      fontFamilyFallback: const ['Segoe UI', 'Roboto'],
       // Desktop platforms default to `VisualDensity.compact`, which shrinks
       // every Material component by 8 logical pixels. The reference UI uses
       // full-size controls, so `standard` is pinned here.
@@ -78,9 +106,19 @@ abstract final class AppTheme {
         headlineMedium: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.5),
         titleLarge: TextStyle(fontWeight: FontWeight.w600),
         titleMedium: TextStyle(fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(color: AppColors.textPrimary),
-        bodyMedium: TextStyle(color: AppColors.textPrimary),
-        bodySmall: TextStyle(color: AppColors.textSecondary),
+        // Body text uses Medium (500) as its base weight.
+        bodyLarge: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        bodyMedium: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
+        bodySmall: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }

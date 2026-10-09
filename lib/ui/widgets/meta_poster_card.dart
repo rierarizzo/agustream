@@ -52,14 +52,14 @@ class MetaPosterCard extends StatelessWidget {
             preview.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyLarge,
+            style: PosterCaption.title(theme.textTheme),
           ),
           if (preview.releaseInfo case final info? when info.isNotEmpty)
             Text(
               info,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+              style: PosterCaption.year(theme.textTheme),
             ),
         ],
       ),
