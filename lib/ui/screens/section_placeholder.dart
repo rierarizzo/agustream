@@ -18,9 +18,9 @@ class SectionPlaceholder extends StatelessWidget {
         children: [
           Icon(section.icon, size: 44, color: AppColors.textSecondary),
           const SizedBox(height: AppSpacing.md),
-          Text(section.label, style: theme.textTheme.headlineMedium),
+          Text(section.label, style: theme.textTheme.headlineLarge),
           const SizedBox(height: AppSpacing.sm),
-          Text('Coming in a later part', style: theme.textTheme.bodySmall),
+          Text('Coming in a later part', style: theme.textTheme.bodyMedium),
         ],
       ),
     );

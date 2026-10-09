@@ -27,12 +27,6 @@ class TitleBar extends StatefulWidget {
 }
 
 class _TitleBarState extends State<TitleBar> with WindowListener {
-  /// The window is created windowed (see [WindowController.initialize]), so the
-  /// initial state is "not maximized". It is kept in sync through
-  /// [WindowListener] events rather than by querying the OS, which also keeps
-  /// the widget testable without platform channels.
-  bool _isMaximized = false;
-
   @override
   void initState() {
     super.initState();
@@ -47,12 +41,12 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
 
   @override
   void onWindowMaximize() {
-    setState(() => _isMaximized = true);
+    WindowController.isMaximized.value = true;
   }
 
   @override
   void onWindowUnmaximize() {
-    setState(() => _isMaximized = false);
+    WindowController.isMaximized.value = false;
   }
 
   @override
@@ -65,26 +59,25 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
         height: kTitleBarHeight,
         child: Row(
           children: [
-            Expanded(
-              child: _TitleBarDragArea(
-                isMaximized: _isMaximized,
-                child: const SizedBox.expand(),
-              ),
+            const Expanded(
+              child: _TitleBarDragArea(child: SizedBox.expand()),
             ),
             WindowCaptionButton.minimize(
               brightness: theme.brightness,
               onPressed: WindowController.minimize,
             ),
-            if (_isMaximized)
-              WindowCaptionButton.unmaximize(
-                brightness: theme.brightness,
-                onPressed: WindowController.unmaximize,
-              )
-            else
-              WindowCaptionButton.maximize(
-                brightness: theme.brightness,
-                onPressed: WindowController.maximize,
-              ),
+            ValueListenableBuilder<bool>(
+              valueListenable: WindowController.isMaximized,
+              builder: (context, isMaximized, _) => isMaximized
+                  ? WindowCaptionButton.unmaximize(
+                      brightness: theme.brightness,
+                      onPressed: WindowController.unmaximize,
+                    )
+                  : WindowCaptionButton.maximize(
+                      brightness: theme.brightness,
+                      onPressed: WindowController.maximize,
+                    ),
+            ),
             WindowCaptionButton.close(
               brightness: theme.brightness,
               onPressed: WindowController.close,
@@ -103,13 +96,12 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
 /// silently does nothing. This variant restores the window first, matching how
 /// Windows 11 behaves when you drag a maximized caption.
 class _TitleBarDragArea extends StatelessWidget {
-  const _TitleBarDragArea({required this.isMaximized, required this.child});
+  const _TitleBarDragArea({required this.child});
 
-  final bool isMaximized;
   final Widget child;
 
   Future<void> _startDragging() async {
-    if (isMaximized) {
+    if (WindowController.isMaximized.value) {
       await windowManager.unmaximize();
     }
     await windowManager.startDragging();

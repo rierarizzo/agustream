@@ -41,11 +41,11 @@ class _Body extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Who is watching?', style: theme.textTheme.headlineMedium),
+              Text('Who is watching?', style: theme.textTheme.headlineLarge),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'The library and the watch progress belong to a profile.',
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -125,9 +125,9 @@ class _ProfileTileState extends State<_ProfileTile> {
                 child: _Avatar(profile: profile),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text(profile.name, style: theme.textTheme.bodyMedium),
+              Text(profile.name, style: theme.textTheme.bodyLarge),
               if (profile.pinEnabled)
-                Text('PIN', style: theme.textTheme.bodySmall),
+                Text('PIN', style: theme.textTheme.bodyMedium),
             ],
           ),
         ),
@@ -182,7 +182,7 @@ class _Initial extends StatelessWidget {
     return Center(
       child: Text(
         initial,
-        style: theme.textTheme.headlineMedium?.copyWith(fontSize: 34),
+        style: theme.textTheme.headlineLarge?.copyWith(fontSize: 34),
       ),
     );
   }
@@ -205,7 +205,7 @@ class _Problem extends StatelessWidget {
         Text(
           message,
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall,
+          style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpacing.md),
         OutlinedButton.icon(

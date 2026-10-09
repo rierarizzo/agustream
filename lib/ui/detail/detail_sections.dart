@@ -29,7 +29,7 @@ class PeopleRow extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         SizedBox(
-          height: 156,
+          height: 176,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -74,7 +74,7 @@ class _PersonCard extends StatelessWidget {
             maxLines: 2,
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyLarge,
           ),
           if (person.character case final character? when character.isNotEmpty)
             Text(
@@ -82,7 +82,7 @@ class _PersonCard extends StatelessWidget {
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodyMedium,
             ),
         ],
       ),
@@ -122,12 +122,12 @@ class DetailsSection extends StatelessWidget {
                   children: [
                     Text(
                       entry.label.toUpperCase(),
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         letterSpacing: 0.8,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    Text(entry.value, style: theme.textTheme.bodyMedium),
+                    Text(entry.value, style: theme.textTheme.bodyLarge),
                   ],
                 ),
             ],
@@ -261,14 +261,14 @@ class _SimilarTile extends StatelessWidget {
               item.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyLarge,
             ),
             if (item.releaseInfo case final info? when info.isNotEmpty)
               Text(
                 info,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodyMedium,
               ),
           ],
         ),
@@ -413,14 +413,14 @@ class _EpisodeCard extends StatelessWidget {
               '${number == null ? '' : '$number. '}$title'.trim(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyLarge,
             ),
             if (video.released case final released? when released.isNotEmpty)
               Text(
                 released,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodyMedium,
               ),
           ],
         ),

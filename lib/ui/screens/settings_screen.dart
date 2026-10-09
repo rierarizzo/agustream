@@ -61,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) => ListView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         children: [
-          Text('Settings', style: theme.textTheme.headlineMedium),
+          Text('Settings', style: theme.textTheme.headlineLarge),
           const SizedBox(height: AppSpacing.lg),
           _AccountCard(account: account),
           const SizedBox(height: AppSpacing.lg),
@@ -211,7 +211,7 @@ class _AccountCardState extends State<_AccountCard> {
             const SizedBox(height: AppSpacing.sm),
             Text(
               _error!,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.error,
               ),
             ),
@@ -263,7 +263,7 @@ class _Card extends StatelessWidget {
         children: [
           Text(title, style: theme.textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xs),
-          Text(subtitle, style: theme.textTheme.bodySmall),
+          Text(subtitle, style: theme.textTheme.bodyMedium),
           const SizedBox(height: AppSpacing.md),
           child,
         ],

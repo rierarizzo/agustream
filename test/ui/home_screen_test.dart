@@ -106,6 +106,8 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.text('See all'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('See all'));
     await tester.pumpAndSettle();
 

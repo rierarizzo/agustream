@@ -44,10 +44,10 @@ abstract final class AppRadii {
 /// Sizes shared by the shell.
 abstract final class AppSizes {
   /// Width of the icon-only navigation rail.
-  static const double sideRailWidth = 64;
+  static const double sideRailWidth = 80;
 
   /// Size of a rail button.
-  static const double railButton = 40;
+  static const double railButton = 48;
 }
 
 abstract final class AppTheme {
@@ -66,13 +66,19 @@ abstract final class AppTheme {
 
     return ThemeData(
       colorScheme: colorScheme,
+      // Desktop platforms default to `VisualDensity.compact`, which shrinks
+      // every Material component by 8 logical pixels. The reference UI uses
+      // full-size controls, so `standard` is pinned here.
+      visualDensity: VisualDensity.standard,
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.background,
       dividerColor: AppColors.divider,
       textTheme: const TextTheme(
+        headlineLarge: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.5),
         headlineMedium: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.5),
         titleLarge: TextStyle(fontWeight: FontWeight.w600),
         titleMedium: TextStyle(fontWeight: FontWeight.w600),
+        bodyLarge: TextStyle(color: AppColors.textPrimary),
         bodyMedium: TextStyle(color: AppColors.textPrimary),
         bodySmall: TextStyle(color: AppColors.textSecondary),
       ),

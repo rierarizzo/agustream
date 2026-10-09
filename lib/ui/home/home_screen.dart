@@ -160,7 +160,7 @@ class _HeroState extends State<_Hero> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 440,
+      height: 576,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -247,7 +247,7 @@ class _HeroSlide extends StatelessWidget {
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   parts.join('   •   '),
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -261,7 +261,7 @@ class _HeroSlide extends StatelessWidget {
                     description,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+                    style: theme.textTheme.bodyLarge,
                   ),
                 ),
               ],
@@ -346,7 +346,7 @@ class _ContinueRow extends StatelessWidget {
       children: [
         const _SectionHeader(title: 'Continue watching'),
         SizedBox(
-          height: 220,
+          height: 248,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -383,7 +383,7 @@ class _ContinueCard extends StatelessWidget {
     final backdrop = item.background ?? item.poster;
 
     return SizedBox(
-      width: 280,
+      width: 336,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.md),
@@ -426,10 +426,10 @@ class _ContinueCard extends StatelessWidget {
               item.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyLarge,
             ),
             if (episode != null)
-              Text(episode, style: theme.textTheme.bodySmall),
+              Text(episode, style: theme.textTheme.bodyMedium),
           ],
         ),
       ),
@@ -455,7 +455,7 @@ class _CatalogRow extends StatelessWidget {
       children: [
         _SectionHeader(title: row.title, onSeeAll: onSeeAll),
         SizedBox(
-          height: 285,
+          height: 332,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -465,7 +465,7 @@ class _CatalogRow extends StatelessWidget {
               final item = row.items[index];
               return MetaPosterCard(
                 preview: item,
-                width: 150,
+                width: 180,
                 onTap: () => onOpen(item),
               );
             },
@@ -540,7 +540,7 @@ class _Message extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),

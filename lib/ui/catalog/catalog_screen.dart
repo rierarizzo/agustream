@@ -132,9 +132,9 @@ class _Header extends StatelessWidget {
                 catalog.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.headlineMedium,
+                style: theme.textTheme.headlineLarge,
               ),
-              Text(catalog.addonName, style: theme.textTheme.bodySmall),
+              Text(catalog.addonName, style: theme.textTheme.bodyMedium),
             ],
           ),
         ),
@@ -176,7 +176,7 @@ class _Content extends StatelessWidget {
       controller: controller,
       padding: EdgeInsets.zero,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 190,
+        maxCrossAxisExtent: 230,
         mainAxisSpacing: AppSpacing.md,
         crossAxisSpacing: AppSpacing.md,
         childAspectRatio: 0.58,
@@ -207,7 +207,7 @@ class _Message extends StatelessWidget {
         children: [
           Icon(icon, size: 40, color: AppColors.textSecondary),
           const SizedBox(height: AppSpacing.md),
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
+          Text(text, style: Theme.of(context).textTheme.bodyLarge),
         ],
       ),
     );

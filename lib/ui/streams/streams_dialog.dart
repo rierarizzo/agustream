@@ -249,9 +249,9 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                       if (year case final year? when year.isNotEmpty)
-                        Text(year, style: theme.textTheme.bodyMedium),
+                        Text(year, style: theme.textTheme.bodyLarge),
                       const SizedBox(height: AppSpacing.xs),
-                      Text(subtitle, style: theme.textTheme.bodySmall),
+                      Text(subtitle, style: theme.textTheme.bodyMedium),
                     ],
                   ),
                 ),
@@ -355,7 +355,7 @@ class _StreamCard extends StatelessWidget {
               children: [
                 Text(
                   primary,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -363,7 +363,7 @@ class _StreamCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     secondary,
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
@@ -375,7 +375,7 @@ class _StreamCard extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.md),
-              child: Text(size, style: theme.textTheme.bodySmall),
+              child: Text(size, style: theme.textTheme.bodyMedium),
             ),
           ],
           IconButton(
@@ -403,7 +403,7 @@ class _Message extends StatelessWidget {
         children: [
           Icon(icon, size: 40, color: AppColors.textSecondary),
           const SizedBox(height: AppSpacing.md),
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
+          Text(text, style: Theme.of(context).textTheme.bodyLarge),
         ],
       ),
     );

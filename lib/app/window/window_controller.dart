@@ -24,6 +24,12 @@ abstract final class WindowController {
   /// it does not emit its own fullscreen event; the state is tracked here.
   static final ValueNotifier<bool> isFullScreen = ValueNotifier<bool>(false);
 
+  /// Whether the window is currently maximized.
+  ///
+  /// Kept here so the title bar reflects a window that starts maximized
+  /// (the `maximize` call runs before any widget can listen for the event).
+  static final ValueNotifier<bool> isMaximized = ValueNotifier<bool>(false);
+
   /// Prepares the native window: hidden caption plus Mica backdrop.
   ///
   /// Must run before `runApp`.
@@ -43,8 +49,12 @@ abstract final class WindowController {
     await windowManager.waitUntilReadyToShow(options, () async {
       await Window.setEffect(effect: WindowEffect.mica, dark: true);
       await windowManager.show();
+      // The reference UI runs maximized; start there instead of the smaller
+      // default frame.
+      await windowManager.maximize();
       await windowManager.focus();
     });
+    isMaximized.value = await windowManager.isMaximized();
   }
 
   static Future<void> minimize() => windowManager.minimize();

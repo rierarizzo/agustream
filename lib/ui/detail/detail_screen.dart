@@ -249,7 +249,7 @@ class _Poster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 150,
+      width: 224,
       child: AspectRatio(
         aspectRatio: 2 / 3,
         child: ClipRRect(
@@ -314,7 +314,7 @@ class _Info extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             parts.join('   •   '),
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodyLarge?.copyWith(
               color: AppColors.textSecondary,
             ),
           ),
@@ -338,7 +338,7 @@ class _Info extends StatelessWidget {
               description,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyLarge,
             ),
           ),
         ],
@@ -396,7 +396,7 @@ class _GenreChip extends StatelessWidget {
         label,
         style: Theme.of(
           context,
-        ).textTheme.bodySmall?.copyWith(color: AppColors.textPrimary),
+        ).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
       ),
     );
   }

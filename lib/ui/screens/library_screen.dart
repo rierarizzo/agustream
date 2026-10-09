@@ -90,8 +90,8 @@ class _Header extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Library', style: theme.textTheme.headlineMedium),
-            Text(_subtitle, style: theme.textTheme.bodySmall),
+            Text('Library', style: theme.textTheme.headlineLarge),
+            Text(_subtitle, style: theme.textTheme.bodyMedium),
           ],
         ),
         const Spacer(),
@@ -206,7 +206,7 @@ class _Content extends StatelessWidget {
     return GridView.builder(
       padding: EdgeInsets.zero,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 190,
+        maxCrossAxisExtent: 230,
         mainAxisSpacing: AppSpacing.md,
         crossAxisSpacing: AppSpacing.md,
         childAspectRatio: 0.58,
@@ -251,7 +251,7 @@ class _Message extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
