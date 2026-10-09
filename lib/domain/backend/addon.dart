@@ -24,7 +24,7 @@ class Addon {
 
   final String id;
 
-  /// Manifest URL, e.g. `https://v3-cinemeta.strem.io/manifest.json`.
+  /// Manifest URL, e.g. `https://addon.example/manifest.json`.
   final String url;
 
   final String? name;

@@ -104,7 +104,6 @@ class DetailController extends ChangeNotifier {
       _meta = await _metadata.detail(
         type: item.contentType,
         id: item.contentId,
-        preferredBaseUrl: item.addonBaseUrl,
       );
     } on Exception catch (error) {
       _error = error;
@@ -124,7 +123,6 @@ class DetailController extends ChangeNotifier {
       _similar = await _metadata.similar(
         type: item.contentType,
         id: item.contentId,
-        preferredBaseUrl: item.addonBaseUrl,
         genre: meta.genres.isEmpty ? null : meta.genres.first,
       );
       notifyListeners();

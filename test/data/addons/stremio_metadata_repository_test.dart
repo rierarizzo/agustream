@@ -5,10 +5,17 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:agustream/data/addons/stremio_metadata_repository.dart';
+import 'package:agustream/domain/backend/addon.dart';
+
+import '../../support/fake_repositories.dart';
 
 /// A response with [body] encoded as UTF-8 JSON.
 http.Response _json(Object body) =>
     http.Response.bytes(utf8.encode(jsonEncode(body)), 200);
+
+/// An addon whose manifest lives at [host].
+Addon _addon(String host) =>
+    Addon(id: host, url: 'https://$host/manifest.json');
 
 /// A manifest with a single movie catalog that supports `genre`.
 Map<String, dynamic> _manifestWithGenreCatalog() => {
@@ -31,10 +38,10 @@ Map<String, dynamic> _manifestWithGenreCatalog() => {
 };
 
 void main() {
-  test('detail fetches /meta/<type>/<id>.json from the preferred addon', () async {
+  test('detail fetches /meta/<type>/<id>.json from the first addon', () async {
     Uri? requested;
     final repository = StremioMetadataRepository(
-      fallbackBaseUrls: const [],
+      addons: FakeAddonRepository(addons: [_addon('addon.example')]),
       clientFactory: () => MockClient((request) async {
         requested = request.url;
         return _json({
@@ -48,40 +55,18 @@ void main() {
       }),
     );
 
-    final meta = await repository.detail(
-      type: 'movie',
-      id: 'tt1',
-      preferredBaseUrl: 'https://addon.example/',
-    );
+    final meta = await repository.detail(type: 'movie', id: 'tt1');
 
+    // The manifest URL is normalized to the base before the request.
     expect(requested.toString(), 'https://addon.example/meta/movie/tt1.json');
     expect(meta?.runtime, '1h 56m');
   });
 
-  test('detail accepts a manifest URL and strips it', () async {
-    Uri? requested;
+  test('detail falls back to the next addon when the first fails', () async {
     final repository = StremioMetadataRepository(
-      fallbackBaseUrls: const [],
-      clientFactory: () => MockClient((request) async {
-        requested = request.url;
-        return _json({
-          'meta': {'id': 'tt1', 'type': 'movie', 'name': 'Arrival'},
-        });
-      }),
-    );
-
-    await repository.detail(
-      type: 'movie',
-      id: 'tt1',
-      preferredBaseUrl: 'https://addon.example/manifest.json?token=abc',
-    );
-
-    expect(requested.toString(), 'https://addon.example/meta/movie/tt1.json');
-  });
-
-  test('detail falls back to another addon when the first fails', () async {
-    final repository = StremioMetadataRepository(
-      fallbackBaseUrls: const ['https://fallback.example'],
+      addons: FakeAddonRepository(
+        addons: [_addon('addon.example'), _addon('fallback.example')],
+      ),
       clientFactory: () => MockClient((request) async {
         if (request.url.host == 'addon.example') {
           return http.Response('not found', 404);
@@ -97,19 +82,31 @@ void main() {
       }),
     );
 
-    final meta = await repository.detail(
-      type: 'movie',
-      id: 'tt1',
-      preferredBaseUrl: 'https://addon.example',
-    );
+    final meta = await repository.detail(type: 'movie', id: 'tt1');
 
     expect(meta?.runtime, '1h 56m');
+  });
+
+  test('detail is null when the account has no addons', () async {
+    var requested = false;
+    final repository = StremioMetadataRepository(
+      addons: FakeAddonRepository(),
+      clientFactory: () => MockClient((request) async {
+        requested = true;
+        return _json(const {});
+      }),
+    );
+
+    final meta = await repository.detail(type: 'movie', id: 'tt1');
+
+    expect(meta, isNull);
+    expect(requested, isFalse);
   });
 
   test('similar queries the type catalog by genre and drops the item', () async {
     Uri? catalogRequest;
     final repository = StremioMetadataRepository(
-      fallbackBaseUrls: const [],
+      addons: FakeAddonRepository(addons: [_addon('addon.example')]),
       clientFactory: () => MockClient((request) async {
         if (request.url.path == '/manifest.json') {
           return _json(_manifestWithGenreCatalog());
@@ -127,7 +124,6 @@ void main() {
     final items = await repository.similar(
       type: 'movie',
       id: 'tt1',
-      preferredBaseUrl: 'https://addon.example',
       genre: 'Action',
     );
 
@@ -140,7 +136,7 @@ void main() {
 
   test('similar is empty when no addon has a catalog of the type', () async {
     final repository = StremioMetadataRepository(
-      fallbackBaseUrls: const [],
+      addons: FakeAddonRepository(addons: [_addon('addon.example')]),
       clientFactory: () => MockClient((request) async {
         return _json({
           'id': 'org.example',
@@ -153,11 +149,7 @@ void main() {
       }),
     );
 
-    final items = await repository.similar(
-      type: 'movie',
-      id: 'tt1',
-      preferredBaseUrl: 'https://addon.example',
-    );
+    final items = await repository.similar(type: 'movie', id: 'tt1');
 
     expect(items, isEmpty);
   });

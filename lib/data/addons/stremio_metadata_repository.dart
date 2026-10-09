@@ -8,27 +8,19 @@ import 'stremio_addon_client.dart';
 
 /// [MetadataRepository] backed by Stremio addons.
 ///
-/// Metadata is not tied to one addon. Like Nuvio does, it is looked up across
-/// the account's enabled addons, in their order, and the first one that returns
-/// a meta wins. [defaultMetadataBaseUrl] (Cinemeta) is always tried last, so a
-/// title still resolves when the account has no metadata addon.
+/// Metadata is always resolved from the account's enabled addons, in their
+/// order, and the first one that returns a meta wins. No provider is baked in:
+/// if the account has no addon that serves `meta`, there is no metadata.
 class StremioMetadataRepository implements MetadataRepository {
   StremioMetadataRepository({
     this.addons,
     http.Client Function()? clientFactory,
-    this.fallbackBaseUrls = const [defaultMetadataBaseUrl],
   }) : _clientFactory = clientFactory ?? http.Client.new;
-
-  /// Cinemeta, the metadata addon Nuvio installs by default.
-  static const String defaultMetadataBaseUrl = 'https://v3-cinemeta.strem.io';
 
   /// Installed addons, looked up in their order.
   final AddonRepository? addons;
 
   final http.Client Function() _clientFactory;
-
-  /// Always tried last, so a title resolves without a metadata addon.
-  final List<String> fallbackBaseUrls;
 
   final Map<String, StremioAddonClient> _clients = {};
 
@@ -36,9 +28,8 @@ class StremioMetadataRepository implements MetadataRepository {
   Future<MetaDetail?> detail({
     required String type,
     required String id,
-    String? preferredBaseUrl,
   }) async {
-    for (final baseUrl in await _candidates(preferredBaseUrl)) {
+    for (final baseUrl in await _candidates()) {
       final meta = await _tryMeta(baseUrl, type, id);
       if (meta != null) return meta;
     }
@@ -49,40 +40,29 @@ class StremioMetadataRepository implements MetadataRepository {
   Future<List<MetaPreview>> similar({
     required String type,
     required String id,
-    String? preferredBaseUrl,
     String? genre,
   }) async {
-    for (final baseUrl in await _candidates(preferredBaseUrl)) {
+    for (final baseUrl in await _candidates()) {
       final items = await _tryCatalog(baseUrl, type, id, genre);
       if (items != null) return items;
     }
     return const [];
   }
 
-  /// Candidate base URLs in priority order, without duplicates.
-  Future<List<String>> _candidates(String? preferredBaseUrl) async {
+  /// Enabled addon base URLs, in the account's order, without duplicates.
+  Future<List<String>> _candidates() async {
     final urls = <String>[];
-    void add(String? value) {
-      if (value == null || value.isEmpty) return;
-      final normalized = normalizeAddonBaseUrl(value);
-      if (normalized.isNotEmpty && !urls.contains(normalized)) {
-        urls.add(normalized);
-      }
-    }
-
-    add(preferredBaseUrl);
     final addons = this.addons;
-    if (addons != null) {
-      try {
-        for (final addon in await addons.all()) {
-          add(addon.url);
+    if (addons == null) return urls;
+    try {
+      for (final addon in await addons.all()) {
+        final normalized = normalizeAddonBaseUrl(addon.url);
+        if (normalized.isNotEmpty && !urls.contains(normalized)) {
+          urls.add(normalized);
         }
-      } on Exception {
-        // The account may not expose addons; the defaults below still work.
       }
-    }
-    for (final fallback in fallbackBaseUrls) {
-      add(fallback);
+    } on Exception {
+      // Without addons there is nothing to ask; the caller shows the item only.
     }
     return urls;
   }

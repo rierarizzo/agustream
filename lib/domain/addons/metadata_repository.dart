@@ -7,12 +7,11 @@ import 'meta.dart';
 abstract interface class MetadataRepository {
   /// Full metadata for [id] in [type], or `null` when no addon has it.
   ///
-  /// Metadata is looked up across the enabled addons; [preferredBaseUrl] (the
-  /// addon a library item came from) is tried first as a hint.
+  /// Metadata comes from the account's enabled addons, in their order: the
+  /// first one that answers wins.
   Future<MetaDetail?> detail({
     required String type,
     required String id,
-    String? preferredBaseUrl,
   });
 
   /// Titles similar to [id], used by the "More like this" row.
@@ -22,7 +21,6 @@ abstract interface class MetadataRepository {
   Future<List<MetaPreview>> similar({
     required String type,
     required String id,
-    String? preferredBaseUrl,
     String? genre,
   });
 }

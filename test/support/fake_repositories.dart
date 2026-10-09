@@ -176,7 +176,6 @@ class FakeMetadataRepository implements MetadataRepository {
   Future<MetaDetail?> detail({
     required String type,
     required String id,
-    String? preferredBaseUrl,
   }) async {
     detailReads++;
     final error = detailFailure;
@@ -188,7 +187,6 @@ class FakeMetadataRepository implements MetadataRepository {
   Future<List<MetaPreview>> similar({
     required String type,
     required String id,
-    String? preferredBaseUrl,
     String? genre,
   }) async {
     return similarResult;
