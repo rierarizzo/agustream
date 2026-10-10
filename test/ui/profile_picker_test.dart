@@ -103,4 +103,20 @@ void main() {
     expect(find.text('Who is watching?'), findsNothing);
     expect(find.byTooltip('Library'), findsOneWidget);
   });
+
+  testWidgets('does not block when the backend has no profiles', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      account: FakeAccountRepository(
+        requiresProfile: false,
+        withProfile: false,
+        availableProfiles: const [],
+      ),
+    );
+
+    expect(find.text('Who is watching?'), findsNothing);
+    expect(find.byTooltip('Library'), findsOneWidget);
+  });
 }

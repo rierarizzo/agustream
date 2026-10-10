@@ -9,6 +9,7 @@ import 'package:agustream/data/backend/nuvio_addon_repository.dart';
 import 'package:agustream/data/backend/nuvio_client.dart';
 import 'package:agustream/data/backend/nuvio_library_repository.dart';
 import 'package:agustream/data/backend/nuvio_progress_repository.dart';
+import 'package:agustream/data/store/session_store.dart';
 import 'package:agustream/domain/backend/backend_exception.dart';
 import 'package:agustream/domain/backend/backend_profile.dart';
 
@@ -48,13 +49,29 @@ String? _header(http.Request request, String name) {
   return null;
 }
 
+/// In-memory [SessionStore] for the persistence tests.
+class _MemorySessionStore implements SessionStore {
+  Map<String, dynamic>? stored;
+
+  @override
+  Future<Map<String, dynamic>?> read() async => stored;
+
+  @override
+  Future<void> write(Map<String, dynamic> session) async => stored = session;
+
+  @override
+  Future<void> clear() async => stored = null;
+}
+
 /// The three repositories, sharing one mocked client.
 class _Backend {
   _Backend(
     http.Response Function(http.Request request) handler, {
     List<http.Request>? log,
+    SessionStore? sessionStore,
   }) : client = NuvioClient(
          baseUrl: 'https://backend.example/',
+         sessionStore: sessionStore ?? const NoopSessionStore(),
          httpClient: MockClient((request) async {
            log?.add(request);
            return handler(request);
@@ -141,7 +158,7 @@ void main() {
       final requests = <http.Request>[];
       final backend = _Backend(_serving({}), log: requests);
 
-      final session = await backend.account.signIn(
+      await backend.account.signIn(
         email: 'me@example.com',
         password: 'secret',
       );
@@ -160,6 +177,7 @@ void main() {
         'password': 'secret',
       });
 
+      final session = backend.client.session!;
       expect(session.accessToken, 'access-123');
       expect(session.refreshToken, 'refresh-123');
       expect(session.userId, 'user-1');
@@ -460,6 +478,7 @@ void main() {
 
   group('signOut', () {
     test('clears the session and the profiles', () async {
+      final store = _MemorySessionStore();
       final backend = _Backend((request) {
         switch (request.url.path) {
           case '/.well-known/nuvio':
@@ -469,15 +488,128 @@ void main() {
           default:
             return _json(_token);
         }
-      });
+      }, sessionStore: store);
 
       await backend.signIn();
       expect(backend.account.isSignedIn, isTrue);
+      expect(store.stored, isNotNull);
 
       await backend.account.signOut();
 
       expect(backend.account.isSignedIn, isFalse);
-      expect(backend.account.session, isNull);
+      expect(backend.client.session, isNull);
+      expect(store.stored, isNull);
+    });
+  });
+
+  group('session persistence', () {
+    /// Epoch seconds far in the future (or the past when [expired]).
+    int expiry({bool past = false}) {
+      final at = past
+          ? DateTime.now().subtract(const Duration(days: 1))
+          : DateTime.now().add(const Duration(days: 1));
+      return at.millisecondsSinceEpoch ~/ 1000;
+    }
+
+    test('signIn persists the session', () async {
+      final store = _MemorySessionStore();
+      final backend = _Backend(_serving({}), sessionStore: store);
+
+      await backend.signIn();
+
+      expect(store.stored, isNotNull);
+      expect(store.stored!['access_token'], 'access-123');
+      expect(store.stored!['refresh_token'], 'refresh-123');
+      expect((store.stored!['user'] as Map)['id'], 'user-1');
+    });
+
+    test('restores a stored session without signing in again', () async {
+      final store = _MemorySessionStore()
+        ..stored = {
+          'access_token': 'access-123',
+          'refresh_token': 'refresh-123',
+          'expires_at': expiry(),
+          'user': {'id': 'user-1', 'email': 'me@example.com'},
+        };
+      final requests = <http.Request>[];
+      final backend = _Backend(_serving({}), log: requests, sessionStore: store);
+
+      final restored = await backend.account.restoreSession();
+
+      expect(restored, isTrue);
+      expect(backend.account.isSignedIn, isTrue);
+      expect(backend.account.email, 'me@example.com');
+      expect(backend.account.profiles, hasLength(1));
+      expect(
+        requests.any((request) => request.url.path == '/auth/v1/token'),
+        isFalse,
+        reason: 'a valid session must not hit the token endpoint',
+      );
+    });
+
+    test('returns false when nothing is stored', () async {
+      final backend = _Backend(
+        _serving({}),
+        sessionStore: _MemorySessionStore(),
+      );
+
+      expect(await backend.account.restoreSession(), isFalse);
+    });
+
+    test('refreshes an expired session', () async {
+      final store = _MemorySessionStore()
+        ..stored = {
+          'access_token': 'old-access',
+          'refresh_token': 'refresh-123',
+          'expires_at': expiry(past: true),
+          'user': {'id': 'user-1', 'email': 'me@example.com'},
+        };
+      final requests = <http.Request>[];
+      final backend = _Backend(
+        (request) {
+          switch (request.url.path) {
+            case '/.well-known/nuvio':
+              return _json(_discovery);
+            case '/auth/v1/token':
+              return _json(_token);
+            case '/rest/v1/profiles':
+              return _json(const [_profile]);
+            default:
+              return _json(const []);
+          }
+        },
+        log: requests,
+        sessionStore: store,
+      );
+
+      final restored = await backend.account.restoreSession();
+
+      expect(restored, isTrue);
+      final refresh = requests.firstWhere(
+        (request) => request.url.path == '/auth/v1/token',
+      );
+      expect(refresh.url.queryParameters['grant_type'], 'refresh_token');
+      expect(jsonDecode(refresh.body), {'refresh_token': 'refresh-123'});
+      expect(backend.client.session!.accessToken, 'access-123');
+      expect(store.stored!['access_token'], 'access-123');
+    });
+
+    test('clears the session when the refresh fails', () async {
+      final store = _MemorySessionStore()
+        ..stored = {
+          'access_token': 'old-access',
+          'refresh_token': 'refresh-123',
+          'expires_at': expiry(past: true),
+          'user': {'id': 'user-1', 'email': 'me@example.com'},
+        };
+      final backend = _Backend((request) {
+        if (request.url.path == '/.well-known/nuvio') return _json(_discovery);
+        return http.Response('nope', 401);
+      }, sessionStore: store);
+
+      expect(await backend.account.restoreSession(), isFalse);
+      expect(store.stored, isNull);
+      expect(backend.client.session, isNull);
     });
   });
 }

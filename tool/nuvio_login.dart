@@ -53,7 +53,8 @@ Future<void> main(List<String> args) async {
     );
 
     print('Signing in as $email…');
-    final session = await account.signIn(email: email, password: password);
+    await account.signIn(email: email, password: password);
+    final session = client.session!;
     print(
       'Signed in: user=${session.userId} email=${session.email} '
       'expires=${session.expiresAt}',

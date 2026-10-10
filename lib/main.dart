@@ -4,15 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'app/app.dart';
+import 'app/backend/backend_factory.dart';
 import 'app/window/window_controller.dart';
 import 'data/addons/stremio_catalog_repository.dart';
 import 'data/addons/stremio_metadata_repository.dart';
 import 'data/addons/stremio_stream_repository.dart';
-import 'data/backend/nuvio_account_repository.dart';
-import 'data/backend/nuvio_addon_repository.dart';
-import 'data/backend/nuvio_client.dart';
-import 'data/backend/nuvio_library_repository.dart';
-import 'data/backend/nuvio_progress_repository.dart';
+import 'data/store/session_store.dart';
 import 'domain/backend/account_repository.dart';
 import 'domain/backend/backend_exception.dart';
 
@@ -21,19 +18,25 @@ Future<void> main(List<String> args) async {
   MediaKit.ensureInitialized();
   await WindowController.initialize();
 
-  // One client (it owns discovery + session) shared by the repositories.
-  final client = NuvioClient();
-  final account = NuvioAccountRepository(client);
-  await _signInFromEnvironment(account);
+  // The only place that picks a concrete backend (see BackendKind).
+  final backend = createBackend(
+    kind: BackendKind.fromEnvironment(),
+    sessionStore: FileSessionStore(),
+  );
+  final account = backend.account;
+
+  // Prefer a persisted session; fall back to the development shortcut below.
+  final restored = await account.restoreSession();
+  if (!restored) await _signInFromEnvironment(account);
 
   // One addon list shared by the metadata and stream repositories.
-  final addons = NuvioAddonRepository(client, account);
+  final addons = backend.addons;
 
   runApp(
     AgustreamApp(
       account: account,
-      library: NuvioLibraryRepository(client, account),
-      progress: NuvioProgressRepository(client, account),
+      library: backend.library,
+      progress: backend.progress,
       metadata: StremioMetadataRepository(addons: addons),
       streams: StremioStreamRepository(addons: addons),
       catalogs: StremioCatalogRepository(addons: addons),
@@ -44,8 +47,8 @@ Future<void> main(List<String> args) async {
 
 /// Development shortcut: signs in with `NUVIO_EMAIL` / `NUVIO_PASSWORD`.
 ///
-/// The library needs a session and the login UI does not exist yet, so this
-/// keeps the app usable straight from the command line:
+/// The login UI is still the temporary card in Settings, so this keeps the app
+/// usable straight from the command line:
 ///
 /// ```
 /// NUVIO_EMAIL=me@example.com NUVIO_PASSWORD=... ./agustream.exe

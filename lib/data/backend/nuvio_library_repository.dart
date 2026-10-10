@@ -3,6 +3,7 @@ import '../../domain/backend/backend_exception.dart';
 import '../../domain/backend/library_item.dart';
 import '../../domain/backend/library_repository.dart';
 import 'nuvio_client.dart';
+import 'nuvio_mappers.dart';
 
 /// [LibraryRepository] backed by a Nuvio (Supabase) deployment.
 ///
@@ -28,6 +29,6 @@ class NuvioLibraryRepository implements LibraryRepository {
       order: 'added_at.desc',
       filter: 'profile_id=eq.$profileId',
     );
-    return rows.map(LibraryItem.fromJson).toList(growable: false);
+    return rows.map(libraryItemFromRow).toList(growable: false);
   }
 }

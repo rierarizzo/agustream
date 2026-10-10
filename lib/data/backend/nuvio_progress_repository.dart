@@ -3,6 +3,7 @@ import '../../domain/backend/backend_exception.dart';
 import '../../domain/backend/progress_repository.dart';
 import '../../domain/backend/watch_progress.dart';
 import 'nuvio_client.dart';
+import 'nuvio_mappers.dart';
 
 /// [ProgressRepository] backed by a Nuvio (Supabase) deployment.
 ///
@@ -27,6 +28,6 @@ class NuvioProgressRepository implements ProgressRepository {
       order: 'last_watched.desc',
       filter: 'profile_id=eq.$profileId',
     );
-    return rows.map(WatchProgress.fromJson).toList(growable: false);
+    return rows.map(watchProgressFromRow).toList(growable: false);
   }
 }

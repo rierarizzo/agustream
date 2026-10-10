@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../domain/backend/backend_connection.dart';
 import '../../domain/backend/backend_exception.dart';
-import '../../domain/backend/backend_session.dart';
+import '../store/session_store.dart';
+import 'backend_connection.dart';
+import 'backend_session.dart';
 
 /// HTTP transport for a Nuvio backend.
 ///
@@ -13,21 +14,27 @@ import '../../domain/backend/backend_session.dart';
 ///
 /// * discovery — `GET  <baseUrl>/.well-known/nuvio`
 /// * auth      — `POST <baseUrl>/auth/v1/token?grant_type=password`
+/// * refresh   — `POST <baseUrl>/auth/v1/token?grant_type=refresh_token`
 /// * data      — `GET  <baseUrl>/rest/v1/<table>` (PostgREST)
 ///
 /// It owns the transport state (the discovery document and the session) and is
 /// shared by the repositories in this folder, which are split by capability.
 /// Row-level security on the backend scopes every read to the signed-in user.
 class NuvioClient {
-  NuvioClient({String baseUrl = defaultBaseUrl, http.Client? httpClient})
-    : _baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), ''),
-      _http = httpClient ?? http.Client();
+  NuvioClient({
+    String baseUrl = defaultBaseUrl,
+    http.Client? httpClient,
+    SessionStore sessionStore = const NoopSessionStore(),
+  }) : _baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), ''),
+       _http = httpClient ?? http.Client(),
+       _store = sessionStore;
 
   /// Official Nuvio-hosted backend.
   static const String defaultBaseUrl = 'https://api.nuvio.tv';
 
   final String _baseUrl;
   final http.Client _http;
+  final SessionStore _store;
 
   BackendConnection? _connection;
   BackendSession? _session;
@@ -49,7 +56,7 @@ class NuvioClient {
     );
   }
 
-  /// Signs in with email + password and remembers the session.
+  /// Signs in with email + password and remembers (and persists) the session.
   Future<BackendSession> signIn({
     required String email,
     required String password,
@@ -63,13 +70,61 @@ class NuvioClient {
     if (json is! Map) {
       throw const BackendException('Unexpected sign-in response');
     }
-    return _session = BackendSession.fromJson(json.cast<String, dynamic>());
+    final session = BackendSession.fromJson(json.cast<String, dynamic>());
+    _session = session;
+    await _store.write(session.toJson());
+    return session;
   }
 
-  /// Drops the session, invalidating it on the backend when possible.
+  /// Restores a persisted session, renewing it when it has expired.
+  ///
+  /// Returns `true` when a usable session is available. A missing, corrupt or
+  /// unrenewable session is cleared and reported as `false`, so the caller can
+  /// fall back to a sign-in instead of failing.
+  Future<bool> restoreSession() async {
+    final stored = await _store.read();
+    if (stored == null) return false;
+
+    final BackendSession parsed;
+    try {
+      parsed = BackendSession.fromJson(stored);
+    } on Exception {
+      await _store.clear();
+      return false;
+    }
+    if (parsed.accessToken.isEmpty || parsed.refreshToken.isEmpty) {
+      await _store.clear();
+      return false;
+    }
+
+    var session = parsed;
+    if (session.isExpired) {
+      try {
+        await _ensureDiscovered();
+      } on Exception {
+        // Without discovery the refresh request lacks the api key; give up.
+        await _store.clear();
+        return false;
+      }
+      final refreshed = await _refreshSession(session);
+      if (refreshed == null) {
+        await _store.clear();
+        return false;
+      }
+      session = refreshed;
+    }
+
+    _session = session;
+    await _store.write(session.toJson());
+    return true;
+  }
+
+  /// Drops the session (memory + store), invalidating it on the backend when
+  /// possible.
   Future<void> signOut() async {
     final current = _session;
     _session = null;
+    await _store.clear();
     if (current == null) return;
     try {
       await _http.post(
@@ -121,6 +176,35 @@ class NuvioClient {
 
   Future<void> _ensureDiscovered() async {
     if (_connection == null) await discover();
+  }
+
+  /// Exchanges [current]'s refresh token for a new session.
+  ///
+  /// Returns `null` when the backend rejects the refresh; callers treat that as
+  /// "no session". Fields the refresh response omits fall back to [current].
+  Future<BackendSession?> _refreshSession(BackendSession current) async {
+    try {
+      final json = await _request(
+        'POST',
+        Uri.parse('$_baseUrl/auth/v1/token?grant_type=refresh_token'),
+        body: {'refresh_token': current.refreshToken},
+      );
+      if (json is! Map) return null;
+      final refreshed = BackendSession.fromJson(json.cast<String, dynamic>());
+      if (refreshed.accessToken.isEmpty) return null;
+      if (refreshed.userId.isNotEmpty) return refreshed;
+      return BackendSession(
+        accessToken: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken.isEmpty
+            ? current.refreshToken
+            : refreshed.refreshToken,
+        userId: current.userId,
+        email: refreshed.email ?? current.email,
+        expiresAt: refreshed.expiresAt,
+      );
+    } on Exception {
+      return null;
+    }
   }
 
   Future<Object?> _request(

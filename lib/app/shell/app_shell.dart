@@ -52,10 +52,12 @@ class _AppShellState extends State<AppShell> {
       builder: (context, _) => ValueListenableBuilder<bool>(
         valueListenable: WindowController.isFullScreen,
         builder: (context, isFullScreen, _) {
-          // Signed in but no profile chosen: the account data belongs to a
-          // profile, so the app waits for one instead of guessing. The rail is
-          // hidden on purpose — there is nothing to navigate to yet.
-          if (account.isSignedIn && account.activeProfile == null) {
+          // Signed in, profiles required, but none chosen yet: the account
+          // data belongs to a profile, so the app waits for one instead of
+          // guessing. Backends without profiles never enter this branch.
+          if (account.isSignedIn &&
+              account.requiresProfile &&
+              account.activeProfile == null) {
             // Material so the picker's ink effects have an ancestor; the gate
             // replaces the whole content area, which normally provides it.
             return Material(

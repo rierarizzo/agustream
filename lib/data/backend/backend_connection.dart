@@ -1,10 +1,10 @@
-import '../shared/json_utils.dart';
+import '../../domain/shared/json_utils.dart';
 
-/// Connection settings published by a Nuvio backend at
-/// `<baseUrl>/.well-known/nuvio`.
+/// Connection settings published by the backend at
+/// `<baseUrl>/.well-known/<service>`.
 ///
-/// The backend *is* a Supabase deployment, so [backendUrl] doubles as the
-/// Supabase URL and [publishableKey] as its anon/publishable key.
+/// This is discovery/transport state, specific to the Nuvio backend (a Supabase
+/// deployment), so it lives in `data/` and never crosses into `domain/`.
 class BackendConnection {
   const BackendConnection({
     required this.version,

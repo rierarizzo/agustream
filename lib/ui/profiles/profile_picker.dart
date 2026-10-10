@@ -5,7 +5,7 @@ import '../../app/theme/app_theme.dart';
 import '../../domain/backend/account_repository.dart';
 import '../../domain/backend/backend_profile.dart';
 
-/// Asks which Nuvio profile to work with.
+/// Asks which profile to work with.
 ///
 /// Shown as a gate: the library, the watch progress and every write belong to a
 /// profile, so there is no safe default. Choosing one is mandatory.

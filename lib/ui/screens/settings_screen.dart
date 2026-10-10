@@ -106,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-/// Signs in and out of the Nuvio backend.
+/// Signs in and out of the account backend.
 ///
 /// Temporary: it exists so the library can be tested with a real account before
 /// the login screen is designed.
@@ -170,7 +170,7 @@ class _AccountCardState extends State<_AccountCard> {
     if (account.isSignedIn) {
       return _Card(
         title: 'Account',
-        subtitle: 'Signed in as ${account.email ?? 'your Nuvio account'}.',
+        subtitle: 'Signed in as ${account.email ?? 'your account'}.',
         child: Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
@@ -185,7 +185,7 @@ class _AccountCardState extends State<_AccountCard> {
     return _Card(
       title: 'Account',
       subtitle:
-          'Sign in to load your Nuvio library. Temporary: the real login '
+          'Sign in to load your library. Temporary: the real login '
           'screen arrives with the settings part.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

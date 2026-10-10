@@ -7,7 +7,7 @@ import '../detail/detail_screen.dart';
 import '../library/library_controller.dart';
 import '../library/poster_tile.dart';
 
-/// Library section: every title saved in the Nuvio account.
+/// Library section: every title saved in the account.
 ///
 /// The data comes from the backend through [LibraryController]; this screen
 /// only renders it.
@@ -175,7 +175,7 @@ class _Content extends StatelessWidget {
       return const _Message(
         icon: Icons.lock_outline,
         title: 'Not signed in',
-        message: 'Sign in from Settings to load your Nuvio library.',
+        message: 'Sign in from Settings to load your library.',
       );
     }
 

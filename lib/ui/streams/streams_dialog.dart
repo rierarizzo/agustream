@@ -6,7 +6,7 @@ import '../../domain/addons/stream.dart';
 import '../../domain/addons/stream_repository.dart';
 import 'streams_controller.dart';
 
-/// Modal that lists the available streams, mirroring Nuvio's picker.
+/// Modal that lists the available streams, mirroring the reference picker.
 ///
 /// The stream text is shown as-is: addons such as AIOStreams put their
 /// configured, multi-line format in `name` and `description`, so the UI just

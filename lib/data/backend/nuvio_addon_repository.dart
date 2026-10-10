@@ -3,6 +3,7 @@ import '../../domain/backend/addon.dart';
 import '../../domain/backend/addon_repository.dart';
 import '../../domain/backend/backend_exception.dart';
 import 'nuvio_client.dart';
+import 'nuvio_mappers.dart';
 
 /// [AddonRepository] backed by a Nuvio (Supabase) deployment.
 ///
@@ -27,6 +28,6 @@ class NuvioAddonRepository implements AddonRepository {
       order: 'sort_order.asc',
       filter: 'profile_id=eq.$profileId&enabled=is.true',
     );
-    return rows.map(Addon.fromJson).toList(growable: false);
+    return rows.map(addonFromRow).toList(growable: false);
   }
 }

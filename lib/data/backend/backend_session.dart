@@ -1,6 +1,10 @@
-import '../shared/json_utils.dart';
+import '../../domain/shared/json_utils.dart';
 
-/// A signed-in Nuvio session, backed by a Supabase access/refresh token pair.
+/// A signed-in session, backed by an access/refresh token pair.
+///
+/// This is transport state, not a domain model: only the backend client reads
+/// and writes it. Keep it in `data/` so the account interface can stay free of
+/// token details.
 class BackendSession {
   const BackendSession({
     required this.accessToken,
@@ -38,4 +42,14 @@ class BackendSession {
 
   bool get isExpired =>
       expiresAt != null && !DateTime.now().toUtc().isBefore(expiresAt!);
+
+  /// Serializes the session for [SessionStore]. `expires_at` is stored in
+  /// seconds, matching the auth API.
+  Map<String, dynamic> toJson() => {
+    'access_token': accessToken,
+    'refresh_token': refreshToken,
+    if (expiresAt != null)
+      'expires_at': expiresAt!.millisecondsSinceEpoch ~/ 1000,
+    'user': {'id': userId, if (email != null) 'email': email},
+  };
 }

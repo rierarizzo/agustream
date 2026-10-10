@@ -6,7 +6,6 @@ import 'package:agustream/domain/backend/account_repository.dart';
 import 'package:agustream/domain/backend/addon.dart';
 import 'package:agustream/domain/backend/addon_repository.dart';
 import 'package:agustream/domain/backend/backend_profile.dart';
-import 'package:agustream/domain/backend/backend_session.dart';
 import 'package:agustream/domain/backend/library_item.dart';
 import 'package:agustream/domain/backend/library_repository.dart';
 import 'package:agustream/domain/backend/progress_repository.dart';
@@ -26,17 +25,12 @@ class FakeAccountRepository extends ChangeNotifier
   FakeAccountRepository({
     bool signedIn = true,
     bool withProfile = true,
+    this.requiresProfile = true,
     this.availableProfiles = const <BackendProfile>[testProfile],
     this.profilesError,
     this.isLoadingProfiles = false,
-  }) : _session = signedIn
-           ? const BackendSession(
-               accessToken: 'test-token',
-               refreshToken: 'test-refresh',
-               userId: 'test-user',
-               email: 'tester@example.com',
-             )
-           : null {
+  }) : _isSignedIn = signedIn,
+       _email = signedIn ? 'tester@example.com' : null {
     _profiles = availableProfiles;
     if (signedIn && withProfile && availableProfiles.isNotEmpty) {
       _activeProfile = availableProfiles.first;
@@ -46,6 +40,10 @@ class FakeAccountRepository extends ChangeNotifier
   /// Profiles the account reports.
   final List<BackendProfile> availableProfiles;
 
+  /// Whether the app must wait for a profile before showing content.
+  @override
+  final bool requiresProfile;
+
   /// Reported by [profilesError] without needing a failed load.
   @override
   final Object? profilesError;
@@ -53,7 +51,8 @@ class FakeAccountRepository extends ChangeNotifier
   @override
   final bool isLoadingProfiles;
 
-  BackendSession? _session;
+  bool _isSignedIn;
+  String? _email;
   List<BackendProfile> _profiles = const <BackendProfile>[];
   BackendProfile? _activeProfile;
 
@@ -61,13 +60,10 @@ class FakeAccountRepository extends ChangeNotifier
   Listenable get changes => this;
 
   @override
-  BackendSession? get session => _session;
+  bool get isSignedIn => _isSignedIn;
 
   @override
-  bool get isSignedIn => _session != null;
-
-  @override
-  String? get email => _session?.email;
+  String? get email => _email;
 
   @override
   List<BackendProfile> get profiles => _profiles;
@@ -76,27 +72,25 @@ class FakeAccountRepository extends ChangeNotifier
   BackendProfile? get activeProfile => _activeProfile;
 
   @override
-  Future<BackendSession> signIn({
+  Future<void> signIn({
     required String email,
     required String password,
   }) async {
-    final session = BackendSession(
-      accessToken: 'test-token',
-      refreshToken: 'test-refresh',
-      userId: 'test-user',
-      email: email,
-    );
-    _session = session;
+    _isSignedIn = true;
+    _email = email;
     // Signing in does not choose a profile: the app asks for one.
     _activeProfile = null;
     _profiles = availableProfiles;
     notifyListeners();
-    return session;
   }
 
   @override
+  Future<bool> restoreSession() async => _isSignedIn;
+
+  @override
   Future<void> signOut() async {
-    _session = null;
+    _isSignedIn = false;
+    _email = null;
     _profiles = const <BackendProfile>[];
     _activeProfile = null;
     notifyListeners();

@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/backend/account_repository.dart';
 import '../../domain/backend/backend_profile.dart';
-import '../../domain/backend/backend_session.dart';
 import 'nuvio_client.dart';
+import 'nuvio_mappers.dart';
 
 /// [AccountRepository] backed by a Nuvio (Supabase) deployment.
 class NuvioAccountRepository extends ChangeNotifier
@@ -21,13 +21,13 @@ class NuvioAccountRepository extends ChangeNotifier
   Listenable get changes => this;
 
   @override
-  BackendSession? get session => _client.session;
-
-  @override
   bool get isSignedIn => _client.session != null;
 
   @override
   String? get email => _client.session?.email;
+
+  @override
+  bool get requiresProfile => true;
 
   @override
   List<BackendProfile> get profiles => _profiles;
@@ -42,11 +42,11 @@ class NuvioAccountRepository extends ChangeNotifier
   BackendProfile? get activeProfile => _activeProfile;
 
   @override
-  Future<BackendSession> signIn({
+  Future<void> signIn({
     required String email,
     required String password,
   }) async {
-    final session = await _client.signIn(email: email, password: password);
+    await _client.signIn(email: email, password: password);
     _activeProfile = null;
     _profiles = const <BackendProfile>[];
     _profilesError = null;
@@ -55,7 +55,17 @@ class NuvioAccountRepository extends ChangeNotifier
     // Loaded here so the profile picker has something to show right away. A
     // failure is captured, never thrown: the session is valid either way.
     await loadProfiles();
-    return session;
+  }
+
+  @override
+  Future<bool> restoreSession() async {
+    if (!await _client.restoreSession()) return false;
+    _activeProfile = null;
+    _profiles = const <BackendProfile>[];
+    _profilesError = null;
+    notifyListeners();
+    await loadProfiles();
+    return true;
   }
 
   @override
@@ -75,7 +85,7 @@ class NuvioAccountRepository extends ChangeNotifier
     notifyListeners();
     try {
       final rows = await _client.select('profiles', order: 'profile_index.asc');
-      _profiles = rows.map(BackendProfile.fromJson).toList(growable: false);
+      _profiles = rows.map(backendProfileFromRow).toList(growable: false);
     } on Exception catch (error) {
       _profiles = const <BackendProfile>[];
       _profilesError = error;

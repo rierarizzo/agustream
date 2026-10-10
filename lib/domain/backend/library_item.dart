@@ -1,7 +1,8 @@
 import '../addons/meta.dart';
-import '../shared/json_utils.dart';
 
-/// One saved title in the Nuvio library (`library_items`).
+/// One saved title in the library.
+///
+/// Plain domain data: the row mapping lives in the backend implementation.
 class LibraryItem {
   const LibraryItem({
     required this.id,
@@ -20,26 +21,6 @@ class LibraryItem {
     this.addedAt,
     this.profileId,
   });
-
-  factory LibraryItem.fromJson(Map<String, dynamic> json) {
-    return LibraryItem(
-      id: json['id'] as String? ?? '',
-      contentId: json['content_id'] as String? ?? '',
-      contentType: json['content_type'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      poster: json['poster'] as String?,
-      posterShape: json['poster_shape'] as String?,
-      background: json['background'] as String?,
-      logo: json['logo'] as String?,
-      description: json['description'] as String?,
-      releaseInfo: json['release_info'] as String?,
-      imdbRating: toDouble(json['imdb_rating']),
-      genres: stringList(json['genres']),
-      addonBaseUrl: json['addon_base_url'] as String?,
-      addedAt: toDateTimeMillis(json['added_at']),
-      profileId: toInt(json['profile_id']),
-    );
-  }
 
   /// Builds a library item from a catalog preview, so a title found outside
   /// the library (a catalog, a "similar" row) opens the same detail screen.

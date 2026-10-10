@@ -1,6 +1,6 @@
-import '../shared/json_utils.dart';
-
-/// One addon installed in the account (`addons`).
+/// One addon installed in the account.
+///
+/// Plain domain data: the row mapping lives in the backend implementation.
 class Addon {
   const Addon({
     required this.id,
@@ -10,17 +10,6 @@ class Addon {
     this.sortOrder = 0,
     this.profileId,
   });
-
-  factory Addon.fromJson(Map<String, dynamic> json) {
-    return Addon(
-      id: json['id'] as String? ?? '',
-      url: json['url'] as String? ?? '',
-      name: json['name'] as String?,
-      enabled: toBool(json['enabled']) ?? true,
-      sortOrder: toInt(json['sort_order']) ?? 0,
-      profileId: toInt(json['profile_id']),
-    );
-  }
 
   final String id;
 

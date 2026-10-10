@@ -37,10 +37,10 @@ lib/
 ├── ui/             # screens and widgets (Flutter)
 ├── domain/         # models and logic (no UI or network dependencies)
 ├── data/
-│   ├── backend/    # Nuvio backend client      -> BackendProvider
+│   ├── backend/    # account backend clients    -> Account/Library/Progress repos
 │   ├── addons/     # Stremio protocol client
 │   ├── debrid/     # DebridProvider
-│   └── store/      # local persistence
+│   └── store/      # local persistence (session store)
 └── services/
     └── player/     # media_kit wrapper -> PlayerService
 ```
@@ -48,8 +48,12 @@ lib/
 ### Rules
 
 1. The **UI never talks HTTP directly**; it uses `data/` and `domain/`.
-2. The **Nuvio backend is isolated** behind an interface (`BackendProvider`); only that
-   module is replaced if it changes.
+2. The **account backend is isolated** behind interfaces (`AccountRepository`,
+   `LibraryRepository`, `ProgressRepository`, `AddonRepository`). Only
+   `data/backend/` is replaced if it changes, and `BackendKind` in
+   `lib/app/backend/` picks the implementation. Profiles are optional: a backend
+   without them declares `requiresProfile == false` and the app never shows the
+   profile picker.
 3. The **player is isolated** behind `PlayerService` (never call `media_kit` from widgets).
 4. **Dependency rule:** `ui → domain → data`. Never the other way around.
 
