@@ -55,6 +55,20 @@ class Stream {
 
   /// Whether this stream can be handed straight to the player.
   bool get isDirectPlayable => url != null && url!.isNotEmpty;
+
+  /// HTTP headers the addon asks the player to send
+  /// (`behaviorHints.proxyHeaders.request.headers`).
+  Map<String, String>? get httpHeaders {
+    final request = behaviorHints?.proxyHeaders?['request'];
+    if (request is! Map) return null;
+    final headers = request['headers'];
+    if (headers is! Map) return null;
+    final result = <String, String>{};
+    headers.forEach((key, value) {
+      if (value != null) result['$key'] = '$value';
+    });
+    return result.isEmpty ? null : result;
+  }
 }
 
 /// The `behaviorHints` object of a [Stream].

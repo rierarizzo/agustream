@@ -104,6 +104,18 @@ void main() {
     expect(await resolver.resolve(const [series], profileKey: '1'), isEmpty);
   });
 
+  test('honours a manual title-level marker for a series', () async {
+    final metadata = FakeMetadataRepository();
+    final resolver = WatchedBadgeResolver(
+      progress: FakeProgressRepository(watched: {'tt9'}),
+      metadata: metadata,
+      cache: _MemoryCache(),
+    );
+
+    expect(await resolver.resolve(const [series], profileKey: '1'), {'tt9'});
+    expect(metadata.detailReads, 0);
+  });
+
   test('reuses the cache instead of hitting metadata again', () async {
     final metadata = seriesMeta();
     final cache = _MemoryCache();

@@ -18,15 +18,18 @@ void main() {
     required FakeMetadataRepository metadata,
     FakeStreamRepository? streams,
     FakeLibraryRepository? library,
+    FakeProgressRepository? progress,
+    FakeRatingRepository? ratings,
   }) async {
     await tester.pumpWidget(
       AppServices(
         account: FakeAccountRepository(),
         library: library ?? FakeLibraryRepository(),
-        progress: FakeProgressRepository(),
+        progress: progress ?? FakeProgressRepository(),
         metadata: metadata,
         streams: streams ?? FakeStreamRepository(),
         catalogs: FakeCatalogRepository(),
+        ratings: ratings ?? FakeRatingRepository(),
         child: MaterialApp(
           theme: AppTheme.dark(),
           home: Scaffold(body: DetailScreen(item: item)),
@@ -190,5 +193,46 @@ void main() {
 
     expect(await library.contains('tt1'), isFalse);
     expect(find.byTooltip('Add to library'), findsOneWidget);
+  });
+
+  testWidgets('toggles mark as watched', (tester) async {
+    final progress = FakeProgressRepository();
+    await pumpDetail(
+      tester,
+      item: libraryItem(id: 'tt1', name: 'Arrival'),
+      metadata: FakeMetadataRepository(),
+      progress: progress,
+    );
+
+    expect(find.byTooltip('Mark as watched'), findsOneWidget);
+    await tester.tap(find.byTooltip('Mark as watched'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Mark as unwatched'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Mark as unwatched'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Mark as watched'), findsOneWidget);
+  });
+
+  testWidgets('shows and clears a rating', (tester) async {
+    final ratings = FakeRatingRepository(ratings: {'tt1': 7});
+    await pumpDetail(
+      tester,
+      item: libraryItem(id: 'tt1', name: 'Arrival'),
+      metadata: FakeMetadataRepository(),
+      ratings: ratings,
+    );
+
+    expect(find.byTooltip('Your rating: 7/10'), findsOneWidget);
+    await tester.tap(find.byTooltip('Your rating: 7/10'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Clear'));
+    await tester.pumpAndSettle();
+
+    expect(await ratings.ratingOf('tt1'), isNull);
+    expect(find.byTooltip('Rate'), findsOneWidget);
   });
 }

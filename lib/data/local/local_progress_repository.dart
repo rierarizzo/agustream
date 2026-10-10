@@ -3,18 +3,23 @@ import 'package:flutter/foundation.dart';
 import '../../domain/backend/progress_repository.dart';
 import '../../domain/backend/watch_progress.dart';
 import '../../domain/backend/watched_entry.dart';
+import '../../domain/shared/json_utils.dart';
 import '../backend/nuvio_mappers.dart';
 import '../store/json_file_store.dart';
 
-/// [ProgressRepository] backed by a local JSON file.
+/// [ProgressRepository] backed by local JSON files.
 ///
-/// Entries are deduped by `progress_key` (falling back to `content_id` +
-/// `video_id`), so saving the same title twice updates it instead of appending.
+/// Progress is deduped by `progress_key` (falling back to `content_id` +
+/// `video_id`). Watched markers live in a second file; when it is missing
+/// (older data) completed progress is still reported as watched.
 class LocalProgressRepository extends ChangeNotifier
     implements ProgressRepository {
-  LocalProgressRepository(this._store);
+  LocalProgressRepository(this._store, {this.watched});
 
   final JsonFileStore _store;
+
+  /// Watched markers, when the local backend provides them.
+  final JsonFileStore? watched;
 
   @override
   Listenable get changes => this;
@@ -26,6 +31,45 @@ class LocalProgressRepository extends ChangeNotifier
     // Most recently watched first, like the backend order.
     entries.sort((a, b) => _compareDates(b.lastWatched, a.lastWatched));
     return entries;
+  }
+
+  @override
+  Future<List<WatchedEntry>> watchedEntries(
+    Iterable<String> candidateIds,
+  ) async {
+    final candidates = candidateIds.toSet();
+    if (candidates.isEmpty) return const <WatchedEntry>[];
+    final result = <WatchedEntry>[];
+
+    final store = watched;
+    if (store != null) {
+      for (final row in await store.read()) {
+        final contentId = row['content_id'] as String? ?? '';
+        if (!candidates.contains(contentId)) continue;
+        result.add(
+          WatchedEntry(
+            contentId: contentId,
+            contentType: row['content_type'] as String? ?? '',
+            season: toInt(row['season']),
+            episode: toInt(row['episode']),
+          ),
+        );
+      }
+    }
+
+    for (final entry in (await _store.read()).map(watchProgressFromRow)) {
+      if (!candidates.contains(entry.contentId)) continue;
+      if ((entry.fraction ?? 0) < 0.9) continue;
+      result.add(
+        WatchedEntry(
+          contentId: entry.contentId,
+          contentType: entry.contentType,
+          season: entry.season,
+          episode: entry.episode,
+        ),
+      );
+    }
+    return result;
   }
 
   @override
@@ -44,28 +88,45 @@ class LocalProgressRepository extends ChangeNotifier
   }
 
   @override
-  Future<List<WatchedEntry>> watchedEntries(
-    Iterable<String> candidateIds,
-  ) async {
-    final candidates = candidateIds.toSet();
-    if (candidates.isEmpty) return const <WatchedEntry>[];
-    final rows = await _store.read();
-    return rows
-        .map(watchProgressFromRow)
-        .where(
-          (entry) =>
-              candidates.contains(entry.contentId) &&
-              (entry.fraction ?? 0) >= 0.9,
-        )
-        .map(
-          (entry) => WatchedEntry(
-            contentId: entry.contentId,
-            contentType: entry.contentType,
-            season: entry.season,
-            episode: entry.episode,
-          ),
-        )
-        .toList(growable: false);
+  Future<void> markWatched({
+    required String contentId,
+    required String contentType,
+    int? season,
+    int? episode,
+  }) async {
+    final store = watched;
+    if (store == null) return;
+    final key = _markerKey(contentId, season, episode);
+    final rows = await store.read();
+    final next = [
+      for (final row in rows)
+        if (_markerKeyOfRow(row) != key) row,
+      {
+        'content_id': contentId,
+        'content_type': contentType,
+        'season': ?season,
+        'episode': ?episode,
+        'watched_at': DateTime.now().toUtc().millisecondsSinceEpoch,
+      },
+    ];
+    await store.write(next);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> unmarkWatched({
+    required String contentId,
+    int? season,
+    int? episode,
+  }) async {
+    final store = watched;
+    if (store == null) return;
+    final key = _markerKey(contentId, season, episode);
+    final rows = await store.read();
+    await store.write(
+      rows.where((row) => _markerKeyOfRow(row) != key).toList(growable: false),
+    );
+    notifyListeners();
   }
 
   /// Identity of an entry: the explicit `progress_key` when present, else the
@@ -81,6 +142,15 @@ class LocalProgressRepository extends ChangeNotifier
     if (explicit is String && explicit.isNotEmpty) return explicit;
     return '${row['content_id']}|${row['video_id'] ?? ''}';
   }
+
+  static String _markerKey(String contentId, int? season, int? episode) =>
+      '$contentId|${season ?? -1}|${episode ?? -1}';
+
+  static String _markerKeyOfRow(Map<String, dynamic> row) => _markerKey(
+    row['content_id'] as String? ?? '',
+    toInt(row['season']),
+    toInt(row['episode']),
+  );
 
   static int _compareDates(DateTime? a, DateTime? b) {
     if (a == null && b == null) return 0;

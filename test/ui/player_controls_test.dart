@@ -28,6 +28,8 @@ void main() {
             onSeekBy: (_) {},
             onVolumeChanged: (_) {},
             onToggleFullscreen: onToggleFullscreen ?? () {},
+            onSubtitles: () {},
+            onAudio: () {},
             onBack: onBack ?? () {},
           ),
         ),

@@ -61,24 +61,9 @@ void playStream(
           id: id,
           title: title,
           source: url,
-          httpHeaders: streamHttpHeaders(stream),
+          httpHeaders: stream.httpHeaders,
         ),
       ),
     ),
   );
-}
-
-/// Extracts the HTTP headers an addon asks the player to send
-/// (`behaviorHints.proxyHeaders.request.headers`).
-Map<String, String>? streamHttpHeaders(Stream stream) {
-  final proxy = stream.behaviorHints?.proxyHeaders;
-  final request = proxy?['request'];
-  if (request is! Map) return null;
-  final headers = request['headers'];
-  if (headers is! Map) return null;
-  final result = <String, String>{};
-  headers.forEach((key, value) {
-    if (value != null) result['$key'] = '$value';
-  });
-  return result.isEmpty ? null : result;
 }

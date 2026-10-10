@@ -23,4 +23,23 @@ void main() {
     expect(stream.description, isNull);
     expect(stream.isDirectPlayable, isFalse);
   });
+
+  test('reads the proxy request headers', () {
+    final stream = Stream.fromJson({
+      'url': 'https://cdn/1',
+      'behaviorHints': {
+        'proxyHeaders': {
+          'request': {
+            'headers': {'User-Agent': 'Nuvio', 'X-Token': 42},
+          },
+        },
+      },
+    });
+
+    expect(stream.httpHeaders, {'User-Agent': 'Nuvio', 'X-Token': '42'});
+  });
+
+  test('has no headers without proxyHeaders', () {
+    expect(Stream.fromJson({'url': 'https://cdn/1'}).httpHeaders, isNull);
+  });
 }

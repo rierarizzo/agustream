@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../domain/addons/catalog_repository.dart';
 import '../domain/addons/metadata_repository.dart';
 import '../domain/addons/stream_repository.dart';
+import '../domain/addons/subtitle_repository.dart';
 import '../domain/backend/account_repository.dart';
 import '../domain/backend/library_repository.dart';
 import '../domain/backend/progress_repository.dart';
+import '../domain/backend/rating_repository.dart';
 import '../domain/player/playback_target.dart';
 import '../domain/backend/watched_series_cache.dart';
 import '../ui/screens/player_screen.dart';
@@ -26,6 +28,8 @@ class AgustreamApp extends StatelessWidget {
     required this.metadata,
     required this.streams,
     required this.catalogs,
+    this.subtitles = const NoSubtitleRepository(),
+    this.ratings = const NoRatingRepository(),
     this.watchedCache = const NoopWatchedSeriesCache(),
     this.initialSource,
   });
@@ -48,6 +52,12 @@ class AgustreamApp extends StatelessWidget {
   /// Catalogs exposed by Stremio addons.
   final CatalogRepository catalogs;
 
+  /// Subtitle tracks exposed by Stremio addons.
+  final SubtitleRepository subtitles;
+
+  /// Local per-title ratings.
+  final RatingRepository ratings;
+
   /// Remembers per-series "fully watched" results between loads.
   final WatchedSeriesCache watchedCache;
 
@@ -66,6 +76,8 @@ class AgustreamApp extends StatelessWidget {
       metadata: metadata,
       streams: streams,
       catalogs: catalogs,
+      subtitles: subtitles,
+      ratings: ratings,
       watchedCache: watchedCache,
       child: MaterialApp(
         title: 'Agustream',

@@ -5,9 +5,12 @@ import '../../app/theme/app_theme.dart';
 import '../../domain/addons/meta.dart';
 import '../../domain/backend/library_item.dart';
 import '../../domain/backend/library_repository.dart';
+import '../../domain/backend/progress_repository.dart';
+import '../../domain/backend/rating_repository.dart';
 import '../streams/open_streams.dart';
 import 'detail_controller.dart';
 import 'detail_sections.dart';
+import 'rating_dialog.dart';
 
 /// Title detail: hero, cast, crew, details and "More like this".
 ///
@@ -27,8 +30,14 @@ class _DetailScreenState extends State<DetailScreen> {
   bool _saved = false;
   bool _savedKnown = false;
   bool _saving = false;
+  bool _watched = false;
+  bool _watchedKnown = false;
+  bool _watching = false;
+  int? _rating;
 
   LibraryRepository get _library => AppServices.of(context).library;
+  ProgressRepository get _progress => AppServices.of(context).progress;
+  RatingRepository get _ratings => AppServices.of(context).ratings;
 
   @override
   void didChangeDependencies() {
@@ -37,6 +46,8 @@ class _DetailScreenState extends State<DetailScreen> {
     _detail = DetailController(AppServices.of(context).metadata, widget.item)
       ..load();
     _loadSaved();
+    _loadWatched();
+    _loadRating();
   }
 
   @override
@@ -80,6 +91,71 @@ class _DetailScreenState extends State<DetailScreen> {
       );
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Reads whether the account already marked the title as watched.
+  Future<void> _loadWatched() async {
+    try {
+      final entries = await _progress.watchedEntries([widget.item.contentId]);
+      final watched = entries.any((entry) => entry.isMarker);
+      if (!mounted) return;
+      setState(() {
+        _watched = watched;
+        _watchedKnown = true;
+      });
+    } on Exception {
+      if (mounted) setState(() => _watchedKnown = true);
+    }
+  }
+
+  Future<void> _toggleWatched() async {
+    if (_watching) return;
+    setState(() => _watching = true);
+    final progress = _progress;
+    final item = widget.item;
+    try {
+      if (_watched) {
+        await progress.unmarkWatched(contentId: item.contentId);
+      } else {
+        await progress.markWatched(
+          contentId: item.contentId,
+          contentType: item.contentType,
+        );
+      }
+      if (!mounted) return;
+      setState(() => _watched = !_watched);
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update the watched state: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _watching = false);
+    }
+  }
+
+  Future<void> _loadRating() async {
+    try {
+      final rating = await _ratings.ratingOf(widget.item.contentId);
+      if (mounted) setState(() => _rating = rating);
+    } on Exception {
+      // Ratings are optional; leave it unrated.
+    }
+  }
+
+  Future<void> _rate() async {
+    final value = await showRatingDialog(context, current: _rating);
+    if (value == null || !mounted) return;
+    final rating = value == 0 ? null : value;
+    try {
+      await _ratings.setRating(widget.item.contentId, rating);
+      if (mounted) setState(() => _rating = rating);
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save the rating: $error')),
+      );
     }
   }
 
@@ -171,6 +247,11 @@ class _DetailScreenState extends State<DetailScreen> {
               onToggleSaved: _toggleSaved,
               saved: _saved,
               busy: _saving || !_savedKnown,
+              onToggleWatched: _toggleWatched,
+              watched: _watched,
+              watchedBusy: _watching || !_watchedKnown,
+              rating: _rating,
+              onRate: _rate,
             ),
             const SizedBox(height: AppSpacing.lg),
             if (detail.isSeries && detail.episodes.isNotEmpty)
@@ -211,6 +292,11 @@ class _Hero extends StatelessWidget {
     required this.onToggleSaved,
     required this.saved,
     required this.busy,
+    required this.onToggleWatched,
+    required this.watched,
+    required this.watchedBusy,
+    required this.rating,
+    required this.onRate,
   });
 
   final DetailController detail;
@@ -219,6 +305,11 @@ class _Hero extends StatelessWidget {
   final VoidCallback onToggleSaved;
   final bool saved;
   final bool busy;
+  final VoidCallback onToggleWatched;
+  final bool watched;
+  final bool watchedBusy;
+  final int? rating;
+  final VoidCallback onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +343,11 @@ class _Hero extends StatelessWidget {
                     onToggleSaved: onToggleSaved,
                     saved: saved,
                     busy: busy,
+                    onToggleWatched: onToggleWatched,
+                    watched: watched,
+                    watchedBusy: watchedBusy,
+                    rating: rating,
+                    onRate: onRate,
                   ),
                 ),
               ],
@@ -347,6 +443,11 @@ class _Info extends StatelessWidget {
     required this.onToggleSaved,
     required this.saved,
     required this.busy,
+    required this.onToggleWatched,
+    required this.watched,
+    required this.watchedBusy,
+    required this.rating,
+    required this.onRate,
   });
 
   final DetailController detail;
@@ -354,6 +455,11 @@ class _Info extends StatelessWidget {
   final VoidCallback onToggleSaved;
   final bool saved;
   final bool busy;
+  final VoidCallback onToggleWatched;
+  final bool watched;
+  final bool watchedBusy;
+  final int? rating;
+  final VoidCallback onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -432,9 +538,19 @@ class _Info extends StatelessWidget {
               icon: const Icon(Icons.movie_outlined),
               label: const Text('Trailer'),
             ),
-            const _DisabledAction(
-              icon: Icons.check_circle_outline,
-              tooltip: 'Mark as watched (coming soon)',
+            IconButton(
+              onPressed: watchedBusy ? null : onToggleWatched,
+              tooltip: watched ? 'Mark as unwatched' : 'Mark as watched',
+              color: watched ? AppColors.accent : null,
+              icon: watchedBusy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      watched ? Icons.check_circle : Icons.check_circle_outline,
+                    ),
             ),
             IconButton(
               onPressed: busy ? null : onToggleSaved,
@@ -448,9 +564,11 @@ class _Info extends StatelessWidget {
                     )
                   : Icon(saved ? Icons.favorite : Icons.favorite_border),
             ),
-            const _DisabledAction(
-              icon: Icons.star_border,
-              tooltip: 'Rate (coming soon)',
+            IconButton(
+              onPressed: onRate,
+              tooltip: rating == null ? 'Rate' : 'Your rating: $rating/10',
+              color: rating != null ? AppColors.accent : null,
+              icon: Icon(rating == null ? Icons.star_border : Icons.star),
             ),
           ],
         ),
@@ -482,19 +600,6 @@ class _GenreChip extends StatelessWidget {
         ).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
       ),
     );
-  }
-}
-
-/// Action that is visible but not wired yet (writes need the local store).
-class _DisabledAction extends StatelessWidget {
-  const _DisabledAction({required this.icon, required this.tooltip});
-
-  final IconData icon;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(onPressed: null, tooltip: tooltip, icon: Icon(icon));
   }
 }
 

@@ -21,6 +21,8 @@ class PlayerControls extends StatelessWidget {
     required this.onSeekBy,
     required this.onVolumeChanged,
     required this.onToggleFullscreen,
+    required this.onSubtitles,
+    required this.onAudio,
     required this.onBack,
   });
 
@@ -38,6 +40,8 @@ class PlayerControls extends StatelessWidget {
   final ValueChanged<Duration> onSeekBy;
   final ValueChanged<double> onVolumeChanged;
   final VoidCallback onToggleFullscreen;
+  final VoidCallback onSubtitles;
+  final VoidCallback onAudio;
   final VoidCallback onBack;
 
   @override
@@ -180,6 +184,16 @@ class PlayerControls extends StatelessWidget {
                     onChanged: onVolumeChanged,
                   ),
                 ),
+              ),
+              _iconButton(
+                icon: Icons.subtitles_outlined,
+                tooltip: 'Subtitles',
+                onPressed: onSubtitles,
+              ),
+              _iconButton(
+                icon: Icons.audiotrack,
+                tooltip: 'Audio',
+                onPressed: onAudio,
               ),
               _iconButton(
                 icon: Icons.fullscreen,

@@ -9,6 +9,7 @@ import 'package:agustream/domain/backend/backend_profile.dart';
 import 'package:agustream/domain/backend/library_item.dart';
 import 'package:agustream/domain/backend/library_repository.dart';
 import 'package:agustream/domain/backend/progress_repository.dart';
+import 'package:agustream/domain/backend/rating_repository.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
 import 'package:agustream/domain/backend/watched_entry.dart';
 import 'package:flutter/foundation.dart';
@@ -228,6 +229,46 @@ class FakeProgressRepository extends ChangeNotifier
   }
 
   @override
+  Future<void> markWatched({
+    required String contentId,
+    required String contentType,
+    int? season,
+    int? episode,
+  }) async {
+    _throwIfFailing();
+    if (season == null && episode == null) {
+      _watched.add(contentId);
+    } else {
+      _watchedHistory.add(
+        WatchedEntry(
+          contentId: contentId,
+          contentType: contentType,
+          season: season,
+          episode: episode,
+        ),
+      );
+    }
+    notifyListeners();
+  }
+
+  @override
+  Future<void> unmarkWatched({
+    required String contentId,
+    int? season,
+    int? episode,
+  }) async {
+    _throwIfFailing();
+    _watched.remove(contentId);
+    _watchedHistory.removeWhere(
+      (entry) =>
+          entry.contentId == contentId &&
+          entry.season == season &&
+          entry.episode == episode,
+    );
+    notifyListeners();
+  }
+
+  @override
   Future<void> save(WatchProgress progress) async {
     _throwIfFailing();
     final key = progress.progressKey ?? _key(progress.contentId, progress.videoId);
@@ -349,6 +390,25 @@ class FakeStreamRepository implements StreamRepository {
     final error = failure;
     if (error != null) throw error;
     return groups;
+  }
+}
+
+/// In-memory ratings for widget tests.
+class FakeRatingRepository implements RatingRepository {
+  FakeRatingRepository({Map<String, int>? ratings}) : _ratings = {...?ratings};
+
+  final Map<String, int> _ratings;
+
+  @override
+  Future<int?> ratingOf(String contentId) async => _ratings[contentId];
+
+  @override
+  Future<void> setRating(String contentId, int? rating) async {
+    if (rating == null) {
+      _ratings.remove(contentId);
+    } else {
+      _ratings[contentId] = rating;
+    }
   }
 }
 

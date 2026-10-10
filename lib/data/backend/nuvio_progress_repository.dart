@@ -76,6 +76,49 @@ class NuvioProgressRepository extends ChangeNotifier
     return entries;
   }
 
+  @override
+  Future<void> markWatched({
+    required String contentId,
+    required String contentType,
+    int? season,
+    int? episode,
+  }) async {
+    final profileId = _requireProfileId();
+    await _client.callRpc('sync_push_watched_items', {
+      'p_items': [
+        {
+          'content_id': contentId,
+          'content_type': contentType,
+          'season': ?season,
+          'episode': ?episode,
+          'watched_at': DateTime.now().toUtc().millisecondsSinceEpoch,
+        },
+      ],
+      'p_profile_id': profileId,
+    });
+    notifyListeners();
+  }
+
+  @override
+  Future<void> unmarkWatched({
+    required String contentId,
+    int? season,
+    int? episode,
+  }) async {
+    final profileId = _requireProfileId();
+    await _client.callRpc('sync_delete_watched_items', {
+      'p_keys': [
+        {
+          'content_id': contentId,
+          'season': ?season,
+          'episode': ?episode,
+        },
+      ],
+      'p_profile_id': profileId,
+    });
+    notifyListeners();
+  }
+
   int _requireProfileId() {
     final profileId = _account.activeProfile?.profileId;
     if (profileId == null) {

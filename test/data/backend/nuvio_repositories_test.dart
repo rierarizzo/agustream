@@ -147,6 +147,9 @@ http.Response Function(http.Request) _writeHandler({
         return http.Response('', 201);
       case '/rest/v1/rpc/sync_push_watch_progress':
         return http.Response('', 201);
+      case '/rest/v1/rpc/sync_push_watched_items':
+      case '/rest/v1/rpc/sync_delete_watched_items':
+        return http.Response('', 201);
       case '/rest/v1/watched_items':
         return _json(watched);
       default:
@@ -836,6 +839,44 @@ void main() {
           .where((request) => request.url.path == '/rest/v1/watched_items')
           .toList();
       expect(reads, hasLength(2));
+    });
+
+    test('markWatched pushes a marker through the sync RPC', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.progress.markWatched(
+        contentId: 'tt9',
+        contentType: 'movie',
+      );
+
+      final call = requests.singleWhere(
+        (request) =>
+            request.url.path == '/rest/v1/rpc/sync_push_watched_items',
+      );
+      final body = jsonDecode(call.body) as Map<String, dynamic>;
+      expect(body['p_profile_id'], 1);
+      final item = (body['p_items'] as List).single as Map<String, dynamic>;
+      expect(item['content_id'], 'tt9');
+      expect(item['content_type'], 'movie');
+      expect(item['watched_at'], isA<int>());
+    });
+
+    test('unmarkWatched deletes through the sync RPC', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.progress.unmarkWatched(contentId: 'tt9');
+
+      final call = requests.singleWhere(
+        (request) =>
+            request.url.path == '/rest/v1/rpc/sync_delete_watched_items',
+      );
+      final body = jsonDecode(call.body) as Map<String, dynamic>;
+      final key = (body['p_keys'] as List).single as Map<String, dynamic>;
+      expect(key['content_id'], 'tt9');
     });
   });
 }

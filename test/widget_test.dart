@@ -1,4 +1,5 @@
 import 'package:agustream/app/app.dart';
+import 'package:agustream/app/shell/app_chrome.dart';
 import 'package:agustream/ui/home/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -34,5 +35,28 @@ void main() {
 
     expect(find.text('Settings'), findsWidgets);
     expect(find.text('Library'), findsNothing);
+  });
+
+  testWidgets('hides the rail while immersive', (tester) async {
+    await tester.pumpWidget(
+      AgustreamApp(
+        account: FakeAccountRepository(),
+        library: FakeLibraryRepository(),
+        progress: FakeProgressRepository(),
+        metadata: FakeMetadataRepository(),
+        streams: FakeStreamRepository(),
+        catalogs: FakeCatalogRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Library'), findsOneWidget);
+
+    AppChrome.enterImmersive();
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Library'), findsNothing);
+
+    AppChrome.exitImmersive();
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Library'), findsOneWidget);
   });
 }

@@ -39,6 +39,12 @@ class PlayerService {
   /// Errors reported by the underlying engine (e.g. an unreachable URL).
   Stream<String> get error => _player.stream.error;
 
+  /// Tracks available in the current media (audio, video, subtitle).
+  Stream<Tracks> get tracks => _player.stream.tracks;
+
+  /// Tracks currently selected.
+  Stream<Track> get track => _player.stream.track;
+
   /// Position at this instant (for a one-off read).
   Duration get currentPosition => _player.state.position;
 
@@ -58,6 +64,11 @@ class PlayerService {
   Future<void> seek(Duration position) => _player.seek(position);
 
   Future<void> setVolume(double volume) => _player.setVolume(volume);
+
+  Future<void> setAudioTrack(AudioTrack track) => _player.setAudioTrack(track);
+
+  Future<void> setSubtitleTrack(SubtitleTrack track) =>
+      _player.setSubtitleTrack(track);
 
   Future<void> dispose() => _player.dispose();
 }

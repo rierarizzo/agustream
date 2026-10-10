@@ -21,3 +21,7 @@ String localStoreDir() =>
 /// File the per-series "fully watched" cache lives in.
 String watchedSeriesCachePath() =>
     '${agustreamConfigDir()}${Platform.pathSeparator}watched_series.json';
+
+/// File the local ratings live in.
+String ratingsFilePath() =>
+    '${agustreamConfigDir()}${Platform.pathSeparator}ratings.json';

@@ -94,6 +94,7 @@ BackendBundle createBackend({
         library: LocalLibraryRepository(JsonFileStore('$dir/library.json')),
         progress: LocalProgressRepository(
           JsonFileStore('$dir/progress.json'),
+          watched: JsonFileStore('$dir/watched.json'),
         ),
         addons: LocalAddonRepository(
           localAddons ?? _localAddonsFromEnvironment(),

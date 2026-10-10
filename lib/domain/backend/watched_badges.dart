@@ -81,6 +81,11 @@ class WatchedBadgeResolver {
         }
         continue;
       }
+      // A manual "mark as watched" writes a title-level marker for any type.
+      if (watchedKeys.contains(watchedKey(candidate.id))) {
+        watched.add(candidate.id);
+        continue;
+      }
       final hasActivity =
           entries.any((entry) => entry.contentId == candidate.id) ||
           completedKeys.any((key) => key.contentId == candidate.id);

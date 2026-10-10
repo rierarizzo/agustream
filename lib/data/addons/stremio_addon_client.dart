@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../domain/addons/addon_manifest.dart';
 import '../../domain/addons/meta.dart';
 import '../../domain/addons/stream.dart';
+import '../../domain/addons/subtitle.dart';
 
 /// Thrown when an addon request fails or returns something unexpected.
 class StremioAddonException implements Exception {
@@ -78,6 +79,20 @@ class StremioAddonClient {
     return streams
         .whereType<Map>()
         .map((entry) => Stream.fromJson(entry.cast<String, dynamic>()))
+        .toList(growable: false);
+  }
+
+  /// Fetches the available subtitles for [id].
+  Future<List<Subtitle>> fetchSubtitles({
+    required String type,
+    required String id,
+  }) async {
+    final json = await _getJson(Uri.parse('$baseUrl/subtitles/$type/$id.json'));
+    final subtitles = json['subtitles'];
+    if (subtitles is! List) return const [];
+    return subtitles
+        .whereType<Map>()
+        .map((entry) => Subtitle.fromJson(entry.cast<String, dynamic>()))
         .toList(growable: false);
   }
 
