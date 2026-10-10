@@ -5,6 +5,7 @@ import '../../app/services/app_services.dart';
 import '../../app/theme/app_theme.dart';
 import '../../domain/backend/account_repository.dart';
 import '../../domain/backend/backend_exception.dart';
+import '../../domain/player/playback_target.dart';
 import 'player_screen.dart';
 
 /// Settings section.
@@ -31,7 +32,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _open(String source) {
     return Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => PlayerScreen(source: source)),
+      MaterialPageRoute<void>(
+        builder: (_) => PlayerScreen(target: PlaybackTarget.raw(source)),
+      ),
     );
   }
 

@@ -106,18 +106,14 @@ Map<String, dynamic> libraryItemToRow(
   };
 }
 
-/// Serializes a [WatchProgress] into the writable columns of `watch_progress`.
-///
-/// Times are sent in milliseconds, like the reads. `last_watched` defaults to
-/// now when the entry does not carry one. `user_id` scopes the row for
-/// row-level security.
+/// Serializes a [WatchProgress] into the fields `sync_push_watch_progress`
+/// expects (and the local store shape). Times are sent in milliseconds, like the
+/// reads; `last_watched` defaults to now.
 Map<String, dynamic> watchProgressToRow(
   WatchProgress progress, {
   int? profileId,
-  String? userId,
 }) {
   return {
-    'user_id': ?userId,
     'content_id': progress.contentId,
     'content_type': progress.contentType,
     if (progress.videoId != null) 'video_id': progress.videoId,

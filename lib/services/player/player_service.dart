@@ -1,6 +1,8 @@
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../domain/player/playback_target.dart';
+
 /// Wraps `media_kit` so no widget talks to the player directly.
 ///
 /// See the architecture rules in the README: the player is isolated behind this
@@ -25,15 +27,30 @@ class PlayerService {
   /// Whether playback is in progress.
   Stream<bool> get playing => _player.stream.playing;
 
+  /// Fires `true` when playback reaches the end.
+  Stream<bool> get completed => _player.stream.completed;
+
   /// Whether the player is buffering.
   Stream<bool> get buffering => _player.stream.buffering;
+
+  /// Volume, `0`–`100`.
+  Stream<double> get volume => _player.stream.volume;
 
   /// Errors reported by the underlying engine (e.g. an unreachable URL).
   Stream<String> get error => _player.stream.error;
 
-  /// Opens [source]: a local path, a `file://` URI or a URL.
-  Future<void> open(String source, {bool play = true}) {
-    return _player.open(Media(source), play: play);
+  /// Position at this instant (for a one-off read).
+  Duration get currentPosition => _player.state.position;
+
+  /// Duration at this instant (for a one-off read).
+  Duration get currentDuration => _player.state.duration;
+
+  /// Opens [target], sending its headers when the addon requires them.
+  Future<void> open(PlaybackTarget target, {bool play = true}) {
+    return _player.open(
+      Media(target.source, httpHeaders: target.httpHeaders),
+      play: play,
+    );
   }
 
   Future<void> playOrPause() => _player.playOrPause();

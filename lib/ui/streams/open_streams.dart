@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/addons/stream.dart';
 import '../../domain/addons/stream_repository.dart';
+import '../../domain/player/playback_target.dart';
 import '../screens/player_screen.dart';
 import 'streams_dialog.dart';
 
@@ -29,11 +30,17 @@ Future<void> openStreamsDialog(
     ),
   );
   if (!context.mounted || selected == null) return;
-  playStream(context, selected);
+  playStream(context, type: type, id: id, title: title, stream: selected);
 }
 
-/// Plays [stream] with the current player, or explains why it cannot.
-void playStream(BuildContext context, Stream stream) {
+/// Plays [stream] with the integrated player, or explains why it cannot.
+void playStream(
+  BuildContext context, {
+  required String type,
+  required String id,
+  required String title,
+  required Stream stream,
+}) {
   final url = stream.url;
   if (url == null || url.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -46,8 +53,32 @@ void playStream(BuildContext context, Stream stream) {
     );
     return;
   }
-  // Stopgap until the integrated player (part 4.5).
   Navigator.of(context).push(
-    MaterialPageRoute<void>(builder: (_) => PlayerScreen(source: url)),
+    MaterialPageRoute<void>(
+      builder: (_) => PlayerScreen(
+        target: PlaybackTarget.fromContent(
+          type: type,
+          id: id,
+          title: title,
+          source: url,
+          httpHeaders: streamHttpHeaders(stream),
+        ),
+      ),
+    ),
   );
+}
+
+/// Extracts the HTTP headers an addon asks the player to send
+/// (`behaviorHints.proxyHeaders.request.headers`).
+Map<String, String>? streamHttpHeaders(Stream stream) {
+  final proxy = stream.behaviorHints?.proxyHeaders;
+  final request = proxy?['request'];
+  if (request is! Map) return null;
+  final headers = request['headers'];
+  if (headers is! Map) return null;
+  final result = <String, String>{};
+  headers.forEach((key, value) {
+    if (value != null) result['$key'] = '$value';
+  });
+  return result.isEmpty ? null : result;
 }

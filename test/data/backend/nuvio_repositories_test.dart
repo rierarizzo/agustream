@@ -145,6 +145,8 @@ http.Response Function(http.Request) _writeHandler({
         return http.Response('', 201);
       case '/rest/v1/watch_progress':
         return http.Response('', 201);
+      case '/rest/v1/rpc/sync_push_watch_progress':
+        return http.Response('', 201);
       case '/rest/v1/watched_items':
         return _json(watched);
       default:
@@ -743,7 +745,7 @@ void main() {
       );
     });
 
-    test('save upserts progress on progress_key', () async {
+    test('save pushes progress through the sync RPC', () async {
       final requests = <http.Request>[];
       final backend = _Backend(_writeHandler(), log: requests);
       await backend.signInAndChooseProfile();
@@ -758,24 +760,23 @@ void main() {
           episode: 2,
           position: Duration(minutes: 5),
           duration: Duration(minutes: 20),
-          progressKey: 'tt1:1:2',
+          progressKey: 'tt1_s1e2',
         ),
       );
 
-      final upsert = requests.singleWhere(
+      final call = requests.singleWhere(
         (request) =>
             request.method == 'POST' &&
-            request.url.path == '/rest/v1/watch_progress',
+            request.url.path == '/rest/v1/rpc/sync_push_watch_progress',
       );
-      expect(upsert.url.query, contains('on_conflict=progress_key'));
-      expect(_header(upsert, 'prefer'), contains('merge-duplicates'));
-      final body = jsonDecode(upsert.body) as Map<String, dynamic>;
-      expect(body['user_id'], 'user-1');
-      expect(body['position'], 300000);
-      expect(body['duration'], 1200000);
-      expect(body['progress_key'], 'tt1:1:2');
-      expect(body['profile_id'], 1);
-      expect(body['last_watched'], isA<int>());
+      final body = jsonDecode(call.body) as Map<String, dynamic>;
+      expect(body['p_profile_id'], 1);
+      final entry = (body['p_entries'] as List).single as Map<String, dynamic>;
+      expect(entry['content_id'], 'tt1');
+      expect(entry['position'], 300000);
+      expect(entry['duration'], 1200000);
+      expect(entry['progress_key'], 'tt1_s1e2');
+      expect(entry['profile_id'], 1);
     });
 
     test('save requires a progress_key', () async {

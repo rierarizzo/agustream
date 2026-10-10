@@ -39,19 +39,16 @@ class NuvioProgressRepository extends ChangeNotifier
     final profileId = _requireProfileId();
     final key = progress.progressKey;
     if (key == null || key.isEmpty) {
-      // The backend dedupes on `progress_key`; without it the upsert would not
-      // match an existing row and would keep inserting duplicates.
+      // The backend dedupes on `progress_key`; without it the push would create
+      // duplicate rows.
       throw const BackendException('progress_key is required to save progress');
     }
-    await _client.upsert(
-      'watch_progress',
-      watchProgressToRow(
-        progress,
-        profileId: profileId,
-        userId: _requireUserId(),
-      ),
-      onConflict: 'progress_key',
-    );
+    // The sync RPC is the canonical write path: it also derives the watched
+    // markers from completed entries, so a finished title shows as watched.
+    await _client.callRpc('sync_push_watch_progress', {
+      'p_entries': [watchProgressToRow(progress, profileId: profileId)],
+      'p_profile_id': profileId,
+    });
     notifyListeners();
   }
 
@@ -85,14 +82,5 @@ class NuvioProgressRepository extends ChangeNotifier
       throw const BackendException('No profile selected');
     }
     return profileId;
-  }
-
-  /// Auth user id the backend uses for row-level security.
-  String _requireUserId() {
-    final userId = _client.session?.userId;
-    if (userId == null || userId.isEmpty) {
-      throw const BackendException('Not signed in');
-    }
-    return userId;
   }
 }

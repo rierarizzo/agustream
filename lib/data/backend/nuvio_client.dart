@@ -184,23 +184,16 @@ class NuvioClient {
     );
   }
 
-  /// Inserts or updates [row], resolving conflicts on [onConflict]
-  /// (PostgREST `POST ?on_conflict=` + `Prefer: resolution=merge-duplicates`).
-  Future<void> upsert(
-    String table,
-    Map<String, dynamic> row, {
-    required String onConflict,
-  }) async {
+  /// Calls a PostgREST RPC (`POST /rest/v1/rpc/<name>`) and ignores the result.
+  Future<void> callRpc(String name, Map<String, Object?> params) async {
     await _ensureDiscovered();
     final current = _requireSession();
     await _request(
       'POST',
-      Uri.parse('$_baseUrl/rest/v1/$table?on_conflict=$onConflict'),
-      body: row,
+      Uri.parse('$_baseUrl/rest/v1/rpc/$name'),
+      body: params,
       token: current.accessToken,
-      extraHeaders: const {
-        'Prefer': 'resolution=merge-duplicates,return=minimal',
-      },
+      extraHeaders: const {'Prefer': 'return=minimal'},
     );
   }
 

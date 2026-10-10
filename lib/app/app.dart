@@ -6,6 +6,7 @@ import '../domain/addons/stream_repository.dart';
 import '../domain/backend/account_repository.dart';
 import '../domain/backend/library_repository.dart';
 import '../domain/backend/progress_repository.dart';
+import '../domain/player/playback_target.dart';
 import '../domain/backend/watched_series_cache.dart';
 import '../ui/screens/player_screen.dart';
 import 'services/app_services.dart';
@@ -70,7 +71,9 @@ class AgustreamApp extends StatelessWidget {
         title: 'Agustream',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark(),
-        home: source == null ? const AppShell() : PlayerScreen(source: source),
+        home: source == null
+            ? const AppShell()
+            : PlayerScreen(target: PlaybackTarget.raw(source)),
       ),
     );
   }
