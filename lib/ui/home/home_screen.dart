@@ -8,6 +8,7 @@ import '../catalog/catalog_screen.dart';
 import '../detail/detail_screen.dart';
 import '../streams/open_streams.dart';
 import '../widgets/meta_poster_card.dart';
+import '../widgets/syncing_indicator.dart';
 import 'home_controller.dart';
 
 /// Home section: a featured carousel, "Continue watching" and catalog rows.
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
       services.catalogs,
       services.library,
       services.progress,
+      services.watchedBadges,
     )..load();
   }
 
@@ -83,7 +85,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return ListenableBuilder(
       listenable: home,
-      builder: (context, _) => _buildContent(context, home),
+      builder: (context, _) => Stack(
+        children: [
+          _buildContent(context, home),
+          if (home.isSyncingWatched)
+            const Positioned(
+              top: AppSpacing.md,
+              right: AppSpacing.xl,
+              child: SyncingIndicator(),
+            ),
+        ],
+      ),
     );
   }
 
@@ -123,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
               row: row,
               onOpen: _openPreview,
               onSeeAll: () => _openCatalog(row),
+              isWatched: home.isWatched,
             ),
           const SizedBox(height: AppSpacing.xl),
         ],
@@ -442,11 +455,13 @@ class _CatalogRow extends StatelessWidget {
     required this.row,
     required this.onOpen,
     required this.onSeeAll,
+    required this.isWatched,
   });
 
   final HomeRow row;
   final ValueChanged<MetaPreview> onOpen;
   final VoidCallback onSeeAll;
+  final bool Function(String id) isWatched;
 
   @override
   Widget build(BuildContext context) {
@@ -466,6 +481,7 @@ class _CatalogRow extends StatelessWidget {
               return MetaPosterCard(
                 preview: item,
                 width: 180,
+                watched: isWatched(item.id),
                 onTap: () => onOpen(item),
               );
             },

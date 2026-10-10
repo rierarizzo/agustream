@@ -37,10 +37,11 @@ lib/
 ├── ui/             # screens and widgets (Flutter)
 ├── domain/         # models and logic (no UI or network dependencies)
 ├── data/
-│   ├── backend/    # account backend clients    -> Account/Library/Progress repos
+│   ├── backend/    # Nuvio backend client      -> Account/Library/Progress repos
+│   ├── local/      # local backend (no account)
 │   ├── addons/     # Stremio protocol client
 │   ├── debrid/     # DebridProvider
-│   └── store/      # local persistence (session store)
+│   └── store/      # local persistence (session + JSON files)
 └── services/
     └── player/     # media_kit wrapper -> PlayerService
 ```
@@ -56,6 +57,19 @@ lib/
    profile picker.
 3. The **player is isolated** behind `PlayerService` (never call `media_kit` from widgets).
 4. **Dependency rule:** `ui → domain → data`. Never the other way around.
+
+### Backend modes
+
+`AGUSTREAM_BACKEND` picks the account backend (`BackendKind.fromEnvironment`):
+
+| Value | Account | Library / progress | Addons |
+| --- | --- | --- | --- |
+| `nuvio` (default) | Nuvio login + profiles | Nuvio (Supabase) | from the account |
+| `local` | none, always ready | JSON files under `%APPDATA%\Agustream\local` | `AGUSTREAM_LOCAL_ADDONS` (comma-separated manifest URLs) |
+
+Content always comes from Stremio addons; `local` only removes the account
+backend. Writes (`add`/`remove` to the library, `save` progress) are part of the
+`LibraryRepository`/`ProgressRepository` contracts.
 
 ## Environment & setup
 

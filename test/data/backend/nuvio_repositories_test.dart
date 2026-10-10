@@ -12,6 +12,8 @@ import 'package:agustream/data/backend/nuvio_progress_repository.dart';
 import 'package:agustream/data/store/session_store.dart';
 import 'package:agustream/domain/backend/backend_exception.dart';
 import 'package:agustream/domain/backend/backend_profile.dart';
+import 'package:agustream/domain/backend/library_item.dart';
+import 'package:agustream/domain/backend/watch_progress.dart';
 
 const _discovery = {
   'version': 1,
@@ -118,6 +120,35 @@ http.Response Function(http.Request) _serving(
         return _json(profiles ?? const [_profile]);
       default:
         return _json([table]);
+    }
+  };
+}
+
+/// Handler for write tests: serves discovery/token/profiles, answers a
+/// `library_items` read with [contains] and any write with an empty `201`.
+http.Response Function(http.Request) _writeHandler({
+  bool contains = false,
+  List<Map<String, Object?>> watched = const [],
+}) {
+  return (request) {
+    switch (request.url.path) {
+      case '/.well-known/nuvio':
+        return _json(_discovery);
+      case '/auth/v1/token':
+        return _json(_token);
+      case '/rest/v1/profiles':
+        return _json(const [_profile]);
+      case '/rest/v1/library_items':
+        if (request.method == 'GET') {
+          return _json(contains ? const [{'id': 'lib-1'}] : const []);
+        }
+        return http.Response('', 201);
+      case '/rest/v1/watch_progress':
+        return http.Response('', 201);
+      case '/rest/v1/watched_items':
+        return _json(watched);
+      default:
+        return _json(const []);
     }
   };
 }
@@ -610,6 +641,200 @@ void main() {
       expect(await backend.account.restoreSession(), isFalse);
       expect(store.stored, isNull);
       expect(backend.client.session, isNull);
+    });
+  });
+
+  group('writes', () {
+    const item = LibraryItem(
+      id: 'tt9',
+      contentId: 'tt9',
+      contentType: 'movie',
+      name: 'Nine',
+    );
+
+    test('add inserts the item scoped to the active profile', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.library.add(item);
+
+      final insert = requests.singleWhere(
+        (request) =>
+            request.method == 'POST' &&
+            request.url.path == '/rest/v1/library_items',
+      );
+      expect(_header(insert, 'prefer'), 'return=minimal');
+      expect(_header(insert, 'authorization'), 'Bearer access-123');
+      final body = jsonDecode(insert.body) as Map<String, dynamic>;
+      expect(body['user_id'], 'user-1');
+      expect(body['content_id'], 'tt9');
+      expect(body['content_type'], 'movie');
+      expect(body['name'], 'Nine');
+      expect(body['profile_id'], 1);
+      // `added_at` defaults to 0 on the backend, so it must be sent.
+      expect(body['added_at'], isA<int>());
+      // The backend assigns the id.
+      expect(body.containsKey('id'), isFalse);
+    });
+
+    test('add is a no-op when the title is already saved', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(contains: true), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.library.add(item);
+
+      expect(
+        requests.where(
+          (request) =>
+              request.method == 'POST' &&
+              request.url.path == '/rest/v1/library_items',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('remove deletes scoped to content and profile', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.library.remove('tt9');
+
+      final delete = requests.singleWhere(
+        (request) => request.method == 'DELETE',
+      );
+      expect(delete.url.path, '/rest/v1/library_items');
+      expect(delete.url.query, contains('content_id=eq.tt9'));
+      expect(delete.url.query, contains('profile_id=eq.1'));
+    });
+
+    test('library writes notify listeners', () async {
+      final backend = _Backend(_writeHandler());
+      await backend.signInAndChooseProfile();
+      var notifications = 0;
+      backend.library.changes.addListener(() => notifications++);
+
+      await backend.library.add(item);
+      await backend.library.remove('tt9');
+
+      expect(notifications, 2);
+    });
+
+    test('contains reports whether the title is saved', () async {
+      final backend = _Backend(_writeHandler(contains: true));
+      await backend.signInAndChooseProfile();
+
+      expect(await backend.library.contains('tt9'), isTrue);
+    });
+
+    test('writes require an active profile', () async {
+      final backend = _Backend(_writeHandler());
+      await backend.signIn();
+
+      expect(
+        () => backend.library.add(item),
+        throwsA(isA<BackendException>()),
+      );
+      expect(
+        () => backend.library.remove('tt9'),
+        throwsA(isA<BackendException>()),
+      );
+    });
+
+    test('save upserts progress on progress_key', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.progress.save(
+        const WatchProgress(
+          id: '',
+          contentId: 'tt1',
+          contentType: 'series',
+          videoId: 'tt1:1:2',
+          season: 1,
+          episode: 2,
+          position: Duration(minutes: 5),
+          duration: Duration(minutes: 20),
+          progressKey: 'tt1:1:2',
+        ),
+      );
+
+      final upsert = requests.singleWhere(
+        (request) =>
+            request.method == 'POST' &&
+            request.url.path == '/rest/v1/watch_progress',
+      );
+      expect(upsert.url.query, contains('on_conflict=progress_key'));
+      expect(_header(upsert, 'prefer'), contains('merge-duplicates'));
+      final body = jsonDecode(upsert.body) as Map<String, dynamic>;
+      expect(body['user_id'], 'user-1');
+      expect(body['position'], 300000);
+      expect(body['duration'], 1200000);
+      expect(body['progress_key'], 'tt1:1:2');
+      expect(body['profile_id'], 1);
+      expect(body['last_watched'], isA<int>());
+    });
+
+    test('save requires a progress_key', () async {
+      final backend = _Backend(_writeHandler());
+      await backend.signInAndChooseProfile();
+
+      expect(
+        () => backend.progress.save(
+          const WatchProgress(id: '', contentId: 'tt1', contentType: 'movie'),
+        ),
+        throwsA(
+          isA<BackendException>().having(
+            (e) => e.message,
+            'message',
+            contains('progress_key'),
+          ),
+        ),
+      );
+    });
+
+    test('watchedEntries reads the account history by candidate ids', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(
+        _writeHandler(
+          watched: const [
+            {'content_id': 'tt1'},
+            {'content_id': 'tt2'},
+          ],
+        ),
+        log: requests,
+      );
+      await backend.signInAndChooseProfile();
+
+      final watched = await backend.progress.watchedEntries([
+        'tt1',
+        'tt2',
+        'tt3',
+      ]);
+
+      expect(watched.map((entry) => entry.contentId), ['tt1', 'tt2']);
+      final read = requests.last;
+      expect(read.url.path, '/rest/v1/watched_items');
+      expect(read.url.query, contains('profile_id=eq.1'));
+      expect(read.url.query, contains('content_id=in.(tt1,tt2,tt3)'));
+    });
+
+    test('watchedEntries chunks the candidate ids', () async {
+      final requests = <http.Request>[];
+      final backend = _Backend(_writeHandler(), log: requests);
+      await backend.signInAndChooseProfile();
+
+      await backend.progress.watchedEntries([
+        for (var i = 0; i < 45; i++) 'tt$i',
+      ]);
+
+      final reads = requests
+          .where((request) => request.url.path == '/rest/v1/watched_items')
+          .toList();
+      expect(reads, hasLength(2));
     });
   });
 }

@@ -10,6 +10,7 @@ import 'package:agustream/domain/backend/library_item.dart';
 import 'package:agustream/domain/backend/library_repository.dart';
 import 'package:agustream/domain/backend/progress_repository.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
+import 'package:agustream/domain/backend/watched_entry.dart';
 import 'package:flutter/foundation.dart';
 
 /// Profile the fakes use when a test does not care about profiles.
@@ -111,40 +112,139 @@ class FakeAccountRepository extends ChangeNotifier
 }
 
 /// In-memory library for widget tests.
-class FakeLibraryRepository implements LibraryRepository {
-  FakeLibraryRepository({this.items = const <LibraryItem>[], this.failure});
+class FakeLibraryRepository extends ChangeNotifier
+    implements LibraryRepository {
+  FakeLibraryRepository({
+    List<LibraryItem> items = const <LibraryItem>[],
+    this.failure,
+  }) : _items = [...items];
 
-  final List<LibraryItem> items;
+  final List<LibraryItem> _items;
 
-  /// When set, [all] throws it.
+  /// When set, every method throws it.
   final Object? failure;
 
   /// Number of times the library has been read.
   int reads = 0;
 
+  /// Current contents.
+  List<LibraryItem> get items => List.unmodifiable(_items);
+
+  @override
+  Listenable get changes => this;
+
   @override
   Future<List<LibraryItem>> all() async {
     reads++;
+    _throwIfFailing();
+    return _items;
+  }
+
+  @override
+  Future<bool> contains(String contentId) async {
+    _throwIfFailing();
+    return _items.any((item) => item.contentId == contentId);
+  }
+
+  @override
+  Future<void> add(LibraryItem item) async {
+    _throwIfFailing();
+    if (_items.any((existing) => existing.contentId == item.contentId)) return;
+    _items.add(item);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> remove(String contentId) async {
+    _throwIfFailing();
+    _items.removeWhere((item) => item.contentId == contentId);
+    notifyListeners();
+  }
+
+  void _throwIfFailing() {
     final error = failure;
     if (error != null) throw error;
-    return items;
   }
 }
 
 /// In-memory progress for widget tests.
-class FakeProgressRepository implements ProgressRepository {
-  FakeProgressRepository({this.entries = const <WatchProgress>[], this.failure});
+class FakeProgressRepository extends ChangeNotifier
+    implements ProgressRepository {
+  FakeProgressRepository({
+    List<WatchProgress> entries = const <WatchProgress>[],
+    Set<String> watched = const <String>{},
+    List<WatchedEntry> watchedHistory = const <WatchedEntry>[],
+    this.failure,
+  }) : _entries = [...entries],
+       _watched = {...watched},
+       _watchedHistory = [...watchedHistory];
 
-  final List<WatchProgress> entries;
+  final List<WatchProgress> _entries;
 
-  /// When set, [all] throws it.
+  /// Content ids reported as title-level watched markers (movies).
+  final Set<String> _watched;
+
+  /// Extra watched-history rows (episodes), for completed-series tests.
+  final List<WatchedEntry> _watchedHistory;
+
+  /// Marks [contentId] as watched (or not) for the current run.
+  void setWatched(String contentId, bool isWatched) {
+    if (isWatched) {
+      _watched.add(contentId);
+    } else {
+      _watched.remove(contentId);
+    }
+    notifyListeners();
+  }
+
+  /// When set, every method throws it.
   final Object? failure;
+
+  /// Current entries.
+  List<WatchProgress> get entries => List.unmodifiable(_entries);
+
+  @override
+  Listenable get changes => this;
 
   @override
   Future<List<WatchProgress>> all() async {
+    _throwIfFailing();
+    return _entries;
+  }
+
+  @override
+  Future<List<WatchedEntry>> watchedEntries(
+    Iterable<String> candidateIds,
+  ) async {
+    _throwIfFailing();
+    final candidates = candidateIds.toSet();
+    return [
+      for (final id in _watched)
+        if (candidates.contains(id))
+          WatchedEntry(contentId: id, contentType: 'movie'),
+      for (final entry in _watchedHistory)
+        if (candidates.contains(entry.contentId)) entry,
+    ];
+  }
+
+  @override
+  Future<void> save(WatchProgress progress) async {
+    _throwIfFailing();
+    final key = progress.progressKey ?? _key(progress.contentId, progress.videoId);
+    _entries.removeWhere(
+      (entry) =>
+          (entry.progressKey ?? _key(entry.contentId, entry.videoId)) == key,
+    );
+    _entries.add(progress);
+    notifyListeners();
+  }
+
+  static String _key(String contentId, String? videoId) =>
+      '$contentId|${videoId ?? ''}';
+
+  void _throwIfFailing() {
     final error = failure;
     if (error != null) throw error;
-    return entries;
   }
 }
 

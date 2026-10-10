@@ -5,19 +5,29 @@ import '../../data/backend/nuvio_addon_repository.dart';
 import '../../data/backend/nuvio_client.dart';
 import '../../data/backend/nuvio_library_repository.dart';
 import '../../data/backend/nuvio_progress_repository.dart';
+import '../../data/local/local_account_repository.dart';
+import '../../data/local/local_addon_repository.dart';
+import '../../data/local/local_library_repository.dart';
+import '../../data/local/local_progress_repository.dart';
+import '../../data/store/app_paths.dart';
+import '../../data/store/json_file_store.dart';
 import '../../data/store/session_store.dart';
 import '../../domain/backend/account_repository.dart';
+import '../../domain/backend/addon.dart';
 import '../../domain/backend/addon_repository.dart';
 import '../../domain/backend/library_repository.dart';
 import '../../domain/backend/progress_repository.dart';
 
 /// Which backend provides the account, the library and the progress.
 ///
-/// Adding a backend (Stremio, a local store, a custom auth server) means adding
-/// a value here and a branch in [createBackend]. Nothing in `ui/` or `domain/`
-/// changes, because they only know the interfaces.
+/// Adding a backend means adding a value here and a branch in [createBackend].
+/// Nothing in `ui/` or `domain/` changes, because they only know the interfaces.
 enum BackendKind {
-  nuvio;
+  /// Nuvio's hosted (or self-hosted) Supabase backend.
+  nuvio,
+
+  /// Everything on this machine: no account, no profiles.
+  local;
 
   /// Reads `AGUSTREAM_BACKEND`, defaulting to [nuvio] for an unknown value.
   static BackendKind fromEnvironment([Map<String, String>? environment]) {
@@ -60,6 +70,8 @@ BackendBundle createBackend({
   BackendKind kind = BackendKind.nuvio,
   String? baseUrl,
   SessionStore sessionStore = const NoopSessionStore(),
+  String? localDir,
+  List<Addon>? localAddons,
 }) {
   switch (kind) {
     case BackendKind.nuvio:
@@ -75,5 +87,34 @@ BackendBundle createBackend({
         addons: NuvioAddonRepository(client, account),
         close: client.close,
       );
+    case BackendKind.local:
+      final dir = localDir ?? localStoreDir();
+      return BackendBundle(
+        account: LocalAccountRepository(),
+        library: LocalLibraryRepository(JsonFileStore('$dir/library.json')),
+        progress: LocalProgressRepository(
+          JsonFileStore('$dir/progress.json'),
+        ),
+        addons: LocalAddonRepository(
+          localAddons ?? _localAddonsFromEnvironment(),
+        ),
+      );
   }
+}
+
+/// Addons for local mode from `AGUSTREAM_LOCAL_ADDONS`, comma-separated
+/// manifest URLs. There is no addon management UI yet, so this is the only way
+/// to give local mode catalogs.
+List<Addon> _localAddonsFromEnvironment() {
+  final raw = Platform.environment['AGUSTREAM_LOCAL_ADDONS'];
+  if (raw == null) return const [];
+  return [
+    for (final url in raw.split(','))
+      if (url.trim().isNotEmpty) _addonFor(url.trim()),
+  ];
+}
+
+Addon _addonFor(String url) {
+  final host = Uri.tryParse(url)?.host;
+  return Addon(id: url, url: url, name: host == null || host.isEmpty ? url : host);
 }

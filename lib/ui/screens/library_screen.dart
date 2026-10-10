@@ -6,6 +6,7 @@ import '../../domain/backend/library_item.dart';
 import '../detail/detail_screen.dart';
 import '../library/library_controller.dart';
 import '../library/poster_tile.dart';
+import '../widgets/syncing_indicator.dart';
 
 /// Library section: every title saved in the account.
 ///
@@ -30,6 +31,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       services.account,
       services.library,
       services.progress,
+      services.watchedBadges,
     )..load();
   }
 
@@ -95,6 +97,10 @@ class _Header extends StatelessWidget {
           ],
         ),
         const Spacer(),
+        if (library.isSyncingWatched) ...[
+          const SyncingIndicator(),
+          const SizedBox(width: AppSpacing.sm),
+        ],
         if (library.isSignedIn)
           IconButton(
             tooltip: 'Refresh',
@@ -217,6 +223,7 @@ class _Content extends StatelessWidget {
         return PosterTile(
           item: item,
           progress: library.progressFor(item),
+          watched: library.isWatched(item),
           onTap: () => onOpen(item),
         );
       },

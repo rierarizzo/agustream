@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../domain/backend/account_repository.dart';
@@ -5,6 +7,8 @@ import '../../domain/backend/library_item.dart';
 import '../../domain/backend/library_repository.dart';
 import '../../domain/backend/progress_repository.dart';
 import '../../domain/backend/watch_progress.dart';
+import '../../domain/backend/watched_badges.dart';
+import '../watched_badge_sync.dart';
 
 /// Kind of titles the library grid shows.
 enum LibraryFilter {
@@ -19,14 +23,34 @@ enum LibraryFilter {
 }
 
 /// Loads the library and the watch progress that decorates it.
-class LibraryController extends ChangeNotifier {
-  LibraryController(this._account, this._library, this._progress) {
+///
+/// The watched badges are resolved in the background (see [WatchedBadgeSync]),
+/// so the grid paints as soon as the content is there.
+class LibraryController extends ChangeNotifier with WatchedBadgeSync {
+  LibraryController(
+    this._account,
+    this._library,
+    this._progress,
+    this._badges,
+  ) {
     _account.changes.addListener(_handleAccountChanged);
+    // A write elsewhere (e.g. "add to favorites" from the detail screen) must
+    // refresh the grid, so the repository is observable too.
+    _library.changes.addListener(_handleDataChanged);
+    _progress.changes.addListener(_handleDataChanged);
   }
 
   final AccountRepository _account;
   final LibraryRepository _library;
   final ProgressRepository _progress;
+  final WatchedBadgeResolver _badges;
+
+  @override
+  WatchedBadgeResolver get watchedBadgeResolver => _badges;
+
+  @override
+  String get watchedProfileKey =>
+      _account.activeProfile?.profileId?.toString() ?? '';
 
   List<LibraryItem> _items = const <LibraryItem>[];
   Map<String, WatchProgress> _progressByContentId =
@@ -73,6 +97,9 @@ class LibraryController extends ChangeNotifier {
   WatchProgress? progressFor(LibraryItem item) =>
       _progressByContentId[item.contentId];
 
+  /// Whether the account marked [item] as watched.
+  bool isWatched(LibraryItem item) => isWatchedId(item.contentId);
+
   /// Loads library and progress.
   ///
   /// Does nothing when the library is already loaded, unless [force]. When
@@ -89,11 +116,12 @@ class LibraryController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
+    List<WatchProgress> progressEntries = const <WatchProgress>[];
     try {
       final items = await _library.all();
-      final progress = await _progress.all();
+      progressEntries = await _progress.all();
       _items = items;
-      _progressByContentId = _latestByContentId(progress);
+      _progressByContentId = _latestByContentId(progressEntries);
       _hasLoaded = true;
     } on Exception catch (error) {
       _error = error;
@@ -101,11 +129,27 @@ class LibraryController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+    // The badges are resolved off the critical path: the grid paints as soon as
+    // the content is there, and the checks appear when the lookup finishes.
+    if (_hasLoaded) {
+      unawaited(
+        syncWatchedBadges(
+          _items.map(
+            (item) =>
+                WatchedCandidate(id: item.contentId, type: item.contentType),
+          ),
+          progressEntries: progressEntries,
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
     _account.changes.removeListener(_handleAccountChanged);
+    _library.changes.removeListener(_handleDataChanged);
+    _progress.changes.removeListener(_handleDataChanged);
     super.dispose();
   }
 
@@ -117,7 +161,10 @@ class LibraryController extends ChangeNotifier {
     }
   }
 
+  void _handleDataChanged() => load(force: true);
+
   void _clear() {
+    resetWatchedBadges();
     _items = const <LibraryItem>[];
     _progressByContentId = const <String, WatchProgress>{};
     _hasLoaded = false;

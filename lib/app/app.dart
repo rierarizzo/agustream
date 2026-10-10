@@ -6,6 +6,7 @@ import '../domain/addons/stream_repository.dart';
 import '../domain/backend/account_repository.dart';
 import '../domain/backend/library_repository.dart';
 import '../domain/backend/progress_repository.dart';
+import '../domain/backend/watched_series_cache.dart';
 import '../ui/screens/player_screen.dart';
 import 'services/app_services.dart';
 import 'shell/app_shell.dart';
@@ -24,6 +25,7 @@ class AgustreamApp extends StatelessWidget {
     required this.metadata,
     required this.streams,
     required this.catalogs,
+    this.watchedCache = const NoopWatchedSeriesCache(),
     this.initialSource,
   });
 
@@ -45,6 +47,9 @@ class AgustreamApp extends StatelessWidget {
   /// Catalogs exposed by Stremio addons.
   final CatalogRepository catalogs;
 
+  /// Remembers per-series "fully watched" results between loads.
+  final WatchedSeriesCache watchedCache;
+
   /// When set (e.g. from `--play=<source>` on the command line), the app opens
   /// straight into the player with no chrome around it. Development shortcut.
   final String? initialSource;
@@ -60,6 +65,7 @@ class AgustreamApp extends StatelessWidget {
       metadata: metadata,
       streams: streams,
       catalogs: catalogs,
+      watchedCache: watchedCache,
       child: MaterialApp(
         title: 'Agustream',
         debugShowCheckedModeBanner: false,

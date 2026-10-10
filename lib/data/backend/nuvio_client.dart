@@ -150,10 +150,7 @@ class NuvioClient {
     String? filter,
   }) async {
     await _ensureDiscovered();
-    final current = _session;
-    if (current == null) {
-      throw const BackendException('Not signed in');
-    }
+    final current = _requireSession();
     final query = StringBuffer('?select=*');
     if (order != null) query.write('&order=$order');
     if (filter != null) query.write('&$filter');
@@ -169,6 +166,63 @@ class NuvioClient {
         .whereType<Map>()
         .map((row) => row.cast<String, dynamic>())
         .toList(growable: false);
+  }
+
+  /// Inserts [row] into [table] (PostgREST `POST`).
+  ///
+  /// Uses `return=minimal`, so nothing comes back: the backend assigns `id` and
+  /// any other defaults.
+  Future<void> insert(String table, Map<String, dynamic> row) async {
+    await _ensureDiscovered();
+    final current = _requireSession();
+    await _request(
+      'POST',
+      Uri.parse('$_baseUrl/rest/v1/$table'),
+      body: row,
+      token: current.accessToken,
+      extraHeaders: const {'Prefer': 'return=minimal'},
+    );
+  }
+
+  /// Inserts or updates [row], resolving conflicts on [onConflict]
+  /// (PostgREST `POST ?on_conflict=` + `Prefer: resolution=merge-duplicates`).
+  Future<void> upsert(
+    String table,
+    Map<String, dynamic> row, {
+    required String onConflict,
+  }) async {
+    await _ensureDiscovered();
+    final current = _requireSession();
+    await _request(
+      'POST',
+      Uri.parse('$_baseUrl/rest/v1/$table?on_conflict=$onConflict'),
+      body: row,
+      token: current.accessToken,
+      extraHeaders: const {
+        'Prefer': 'resolution=merge-duplicates,return=minimal',
+      },
+    );
+  }
+
+  /// Deletes the rows of [table] matching the PostgREST [filter], e.g.
+  /// `content_id=eq.tt123&profile_id=eq.1`.
+  Future<void> delete(String table, {required String filter}) async {
+    await _ensureDiscovered();
+    final current = _requireSession();
+    await _request(
+      'DELETE',
+      Uri.parse('$_baseUrl/rest/v1/$table?$filter'),
+      token: current.accessToken,
+      extraHeaders: const {'Prefer': 'return=minimal'},
+    );
+  }
+
+  BackendSession _requireSession() {
+    final current = _session;
+    if (current == null) {
+      throw const BackendException('Not signed in');
+    }
+    return current;
   }
 
   /// Closes the underlying HTTP client.
@@ -210,8 +264,9 @@ class NuvioClient {
   Future<Object?> _request(
     String method,
     Uri uri, {
-    Map<String, Object?>? body,
+    Object? body,
     String? token,
+    Map<String, String>? extraHeaders,
   }) async {
     final apiKey = _connection?.publishableKey;
     final headers = <String, String>{
@@ -219,6 +274,7 @@ class NuvioClient {
       if (apiKey != null && apiKey.isNotEmpty) 'apikey': apiKey,
       if (token != null) 'Authorization': 'Bearer $token',
       if (body != null) 'Content-Type': 'application/json',
+      ...?extraHeaders,
     };
 
     final http.Response response;
@@ -230,6 +286,7 @@ class NuvioClient {
           headers: headers,
           body: jsonEncode(body),
         ),
+        'DELETE' => await _http.delete(uri, headers: headers),
         _ => throw ArgumentError('Unsupported method: $method'),
       };
     } on Exception catch (error) {
@@ -243,6 +300,9 @@ class NuvioClient {
         statusCode: response.statusCode,
       );
     }
+
+    // Writes answer with `204 No Content` (or an empty body): nothing to parse.
+    if (response.bodyBytes.isEmpty) return null;
 
     try {
       // Decode as UTF-8 explicitly: `http` falls back to latin1 when the

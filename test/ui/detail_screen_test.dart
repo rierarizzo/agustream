@@ -17,11 +17,12 @@ void main() {
     required LibraryItem item,
     required FakeMetadataRepository metadata,
     FakeStreamRepository? streams,
+    FakeLibraryRepository? library,
   }) async {
     await tester.pumpWidget(
       AppServices(
         account: FakeAccountRepository(),
-        library: FakeLibraryRepository(),
+        library: library ?? FakeLibraryRepository(),
         progress: FakeProgressRepository(),
         metadata: metadata,
         streams: streams ?? FakeStreamRepository(),
@@ -151,5 +152,43 @@ void main() {
     expect(find.text('Episodes'), findsOneWidget);
     expect(find.textContaining('Good News'), findsOneWidget);
     expect(find.textContaining('Half Loop'), findsOneWidget);
+  });
+
+  testWidgets('adds the title to the library and toggles the button', (
+    tester,
+  ) async {
+    final library = FakeLibraryRepository();
+    await pumpDetail(
+      tester,
+      item: libraryItem(id: 'tt1', name: 'Arrival'),
+      metadata: FakeMetadataRepository(),
+      library: library,
+    );
+
+    expect(find.byTooltip('Add to library'), findsOneWidget);
+    await tester.tap(find.byTooltip('Add to library'));
+    await tester.pumpAndSettle();
+
+    expect(await library.contains('tt1'), isTrue);
+    expect(find.byTooltip('Remove from library'), findsOneWidget);
+  });
+
+  testWidgets('removes an already saved title', (tester) async {
+    final library = FakeLibraryRepository(
+      items: [libraryItem(id: 'tt1', name: 'Arrival')],
+    );
+    await pumpDetail(
+      tester,
+      item: libraryItem(id: 'tt1', name: 'Arrival'),
+      metadata: FakeMetadataRepository(),
+      library: library,
+    );
+
+    expect(find.byTooltip('Remove from library'), findsOneWidget);
+    await tester.tap(find.byTooltip('Remove from library'));
+    await tester.pumpAndSettle();
+
+    expect(await library.contains('tt1'), isFalse);
+    expect(find.byTooltip('Add to library'), findsOneWidget);
   });
 }

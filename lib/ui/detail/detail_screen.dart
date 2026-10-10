@@ -4,6 +4,7 @@ import '../../app/services/app_services.dart';
 import '../../app/theme/app_theme.dart';
 import '../../domain/addons/meta.dart';
 import '../../domain/backend/library_item.dart';
+import '../../domain/backend/library_repository.dart';
 import '../streams/open_streams.dart';
 import 'detail_controller.dart';
 import 'detail_sections.dart';
@@ -23,6 +24,11 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   DetailController? _detail;
+  bool _saved = false;
+  bool _savedKnown = false;
+  bool _saving = false;
+
+  LibraryRepository get _library => AppServices.of(context).library;
 
   @override
   void didChangeDependencies() {
@@ -30,12 +36,51 @@ class _DetailScreenState extends State<DetailScreen> {
     if (_detail != null) return;
     _detail = DetailController(AppServices.of(context).metadata, widget.item)
       ..load();
+    _loadSaved();
   }
 
   @override
   void dispose() {
     _detail?.dispose();
     super.dispose();
+  }
+
+  /// Reads whether the title is already in the library, to pick the button.
+  Future<void> _loadSaved() async {
+    try {
+      final saved = await _library.contains(widget.item.contentId);
+      if (!mounted) return;
+      setState(() {
+        _saved = saved;
+        _savedKnown = true;
+      });
+    } on Exception {
+      // Leave the button disabled rather than guessing the state.
+      if (mounted) setState(() => _savedKnown = true);
+    }
+  }
+
+  Future<void> _toggleSaved() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final library = _library;
+    final item = widget.item;
+    try {
+      if (_saved) {
+        await library.remove(item.contentId);
+      } else {
+        await library.add(item);
+      }
+      if (!mounted) return;
+      setState(() => _saved = !_saved);
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update the library: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   void _back() => Navigator.of(context).maybePop();
@@ -119,7 +164,14 @@ class _DetailScreenState extends State<DetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Hero(detail: detail, onPlay: _play, onBack: _back),
+            _Hero(
+              detail: detail,
+              onPlay: _play,
+              onBack: _back,
+              onToggleSaved: _toggleSaved,
+              saved: _saved,
+              busy: _saving || !_savedKnown,
+            ),
             const SizedBox(height: AppSpacing.lg),
             if (detail.isSeries && detail.episodes.isNotEmpty)
               EpisodesSection(
@@ -156,11 +208,17 @@ class _Hero extends StatelessWidget {
     required this.detail,
     required this.onPlay,
     required this.onBack,
+    required this.onToggleSaved,
+    required this.saved,
+    required this.busy,
   });
 
   final DetailController detail;
   final VoidCallback onPlay;
   final VoidCallback onBack;
+  final VoidCallback onToggleSaved;
+  final bool saved;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +245,15 @@ class _Hero extends StatelessWidget {
               children: [
                 _Poster(poster: detail.poster),
                 const SizedBox(width: AppSpacing.lg),
-                Expanded(child: _Info(detail: detail, onPlay: onPlay)),
+                Expanded(
+                  child: _Info(
+                    detail: detail,
+                    onPlay: onPlay,
+                    onToggleSaved: onToggleSaved,
+                    saved: saved,
+                    busy: busy,
+                  ),
+                ),
               ],
             ),
           ),
@@ -275,10 +341,19 @@ class _Poster extends StatelessWidget {
 }
 
 class _Info extends StatelessWidget {
-  const _Info({required this.detail, required this.onPlay});
+  const _Info({
+    required this.detail,
+    required this.onPlay,
+    required this.onToggleSaved,
+    required this.saved,
+    required this.busy,
+  });
 
   final DetailController detail;
   final VoidCallback onPlay;
+  final VoidCallback onToggleSaved;
+  final bool saved;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -361,9 +436,17 @@ class _Info extends StatelessWidget {
               icon: Icons.check_circle_outline,
               tooltip: 'Mark as watched (coming soon)',
             ),
-            const _DisabledAction(
-              icon: Icons.favorite_border,
-              tooltip: 'Add to favorites (coming soon)',
+            IconButton(
+              onPressed: busy ? null : onToggleSaved,
+              tooltip: saved ? 'Remove from library' : 'Add to library',
+              color: saved ? AppColors.accent : null,
+              icon: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(saved ? Icons.favorite : Icons.favorite_border),
             ),
             const _DisabledAction(
               icon: Icons.star_border,

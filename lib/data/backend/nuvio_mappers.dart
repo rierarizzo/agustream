@@ -7,6 +7,7 @@ import '../../domain/backend/addon.dart';
 import '../../domain/backend/backend_profile.dart';
 import '../../domain/backend/library_item.dart';
 import '../../domain/backend/watch_progress.dart';
+import '../../domain/backend/watched_entry.dart';
 import '../../domain/shared/json_utils.dart';
 
 /// Builds a [BackendProfile] from a `profiles` row.
@@ -70,5 +71,75 @@ Addon addonFromRow(Map<String, dynamic> json) {
     enabled: toBool(json['enabled']) ?? true,
     sortOrder: toInt(json['sort_order']) ?? 0,
     profileId: toInt(json['profile_id']),
+  );
+}
+
+/// Serializes a [LibraryItem] into the writable columns of `library_items`.
+///
+/// `id` is left out: the backend assigns it. `(profile_id, user_id)` scope the
+/// row and are required by row-level security, so [userId] must be the signed-in
+/// auth user. `added_at` is always sent because the column defaults to `0`, not
+/// to now. [userId] and [profileId] are omitted when null (the local store has
+/// neither).
+Map<String, dynamic> libraryItemToRow(
+  LibraryItem item, {
+  int? profileId,
+  String? userId,
+}) {
+  return {
+    'user_id': ?userId,
+    'content_id': item.contentId,
+    'content_type': item.contentType,
+    'name': item.name,
+    if (item.poster != null) 'poster': item.poster,
+    if (item.posterShape != null) 'poster_shape': item.posterShape,
+    if (item.background != null) 'background': item.background,
+    if (item.logo != null) 'logo': item.logo,
+    if (item.description != null) 'description': item.description,
+    if (item.releaseInfo != null) 'release_info': item.releaseInfo,
+    if (item.imdbRating != null) 'imdb_rating': item.imdbRating,
+    if (item.genres.isNotEmpty) 'genres': item.genres,
+    if (item.addonBaseUrl != null) 'addon_base_url': item.addonBaseUrl,
+    'added_at': (item.addedAt ?? DateTime.now().toUtc())
+        .millisecondsSinceEpoch,
+    'profile_id': ?profileId,
+  };
+}
+
+/// Serializes a [WatchProgress] into the writable columns of `watch_progress`.
+///
+/// Times are sent in milliseconds, like the reads. `last_watched` defaults to
+/// now when the entry does not carry one. `user_id` scopes the row for
+/// row-level security.
+Map<String, dynamic> watchProgressToRow(
+  WatchProgress progress, {
+  int? profileId,
+  String? userId,
+}) {
+  return {
+    'user_id': ?userId,
+    'content_id': progress.contentId,
+    'content_type': progress.contentType,
+    if (progress.videoId != null) 'video_id': progress.videoId,
+    if (progress.season != null) 'season': progress.season,
+    if (progress.episode != null) 'episode': progress.episode,
+    if (progress.position != null)
+      'position': progress.position!.inMilliseconds,
+    if (progress.duration != null)
+      'duration': progress.duration!.inMilliseconds,
+    'last_watched': (progress.lastWatched ?? DateTime.now().toUtc())
+        .millisecondsSinceEpoch,
+    if (progress.progressKey != null) 'progress_key': progress.progressKey,
+    'profile_id': ?profileId,
+  };
+}
+
+/// Builds a [WatchedEntry] from a `watched_items` row.
+WatchedEntry watchedEntryFromRow(Map<String, dynamic> json) {
+  return WatchedEntry(
+    contentId: json['content_id'] as String? ?? '',
+    contentType: json['content_type'] as String? ?? '',
+    season: toInt(json['season']),
+    episode: toInt(json['episode']),
   );
 }

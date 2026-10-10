@@ -9,6 +9,7 @@ import 'app/window/window_controller.dart';
 import 'data/addons/stremio_catalog_repository.dart';
 import 'data/addons/stremio_metadata_repository.dart';
 import 'data/addons/stremio_stream_repository.dart';
+import 'data/store/file_watched_series_cache.dart';
 import 'data/store/session_store.dart';
 import 'domain/backend/account_repository.dart';
 import 'domain/backend/backend_exception.dart';
@@ -40,6 +41,7 @@ Future<void> main(List<String> args) async {
       metadata: StremioMetadataRepository(addons: addons),
       streams: StremioStreamRepository(addons: addons),
       catalogs: StremioCatalogRepository(addons: addons),
+      watchedCache: FileWatchedSeriesCache(),
       initialSource: _initialSource(args),
     ),
   );

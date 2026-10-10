@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'app_paths.dart';
+
 /// Persistence for the signed-in session.
 ///
 /// Kept behind an interface so the transport does not know where the session
@@ -36,7 +38,7 @@ class NoopSessionStore implements SessionStore {
 /// Failures are swallowed: a corrupted or unreadable file degrades to "no
 /// session", which means signing in again, instead of crashing the startup.
 class FileSessionStore implements SessionStore {
-  FileSessionStore({String? path}) : path = path ?? _defaultPath();
+  FileSessionStore({String? path}) : path = path ?? sessionFilePath();
 
   /// Absolute path of the session file.
   final String path;
@@ -72,15 +74,5 @@ class FileSessionStore implements SessionStore {
     } on Exception {
       // Nothing to clean up.
     }
-  }
-
-  /// `%APPDATA%\Agustream\session.json` on Windows, XDG config elsewhere.
-  static String _defaultPath() {
-    final env = Platform.environment;
-    final separator = Platform.pathSeparator;
-    final base = Platform.isWindows
-        ? (env['APPDATA'] ?? env['LOCALAPPDATA'] ?? '.')
-        : (env['XDG_CONFIG_HOME'] ?? '${env['HOME'] ?? '.'}/.config');
-    return '$base${separator}Agustream${separator}session.json';
   }
 }

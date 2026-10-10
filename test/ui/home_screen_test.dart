@@ -133,4 +133,28 @@ void main() {
 
     expect(find.text('Not signed in'), findsOneWidget);
   });
+
+  testWidgets('marks a watched title in a catalog row', (tester) async {
+    const ref = CatalogRef(
+      addonName: 'Addon A',
+      addonBaseUrl: 'https://a.example',
+      type: 'movie',
+      id: 'top',
+      name: 'Popular',
+    );
+
+    await pumpHome(
+      tester,
+      catalogs: FakeCatalogRepository(
+        catalogsResult: const [ref],
+        itemsResult: const [
+          MetaPreview(id: 'tt1', type: 'movie', name: 'Arrival'),
+          MetaPreview(id: 'tt2', type: 'movie', name: 'Other'),
+        ],
+      ),
+      progress: FakeProgressRepository(watched: {'tt1'}),
+    );
+
+    expect(find.byIcon(Icons.check), findsOneWidget);
+  });
 }

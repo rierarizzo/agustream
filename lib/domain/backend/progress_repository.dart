@@ -1,10 +1,25 @@
-import 'watch_progress.dart';
+import 'package:flutter/foundation.dart';
 
-/// Read access to watch progress.
+import 'watch_progress.dart';
+import 'watched_entry.dart';
+
+/// Read and write access to watch state: resume progress and watched markers.
 ///
-/// Only reads for now: writes land together with the local store, so that the
-/// Nuvio and local implementations can be exercised by the same tests.
+/// Observable — [changes] fires after a [save] so screens can reload.
 abstract interface class ProgressRepository {
   /// Every progress entry, most recently watched first.
   Future<List<WatchProgress>> all();
+
+  /// Creates or updates [progress], matched by [WatchProgress.progressKey].
+  Future<void> save(WatchProgress progress);
+
+  /// Watched history entries for [candidateIds].
+  ///
+  /// Mirrors the account's own watched data (a movie watched, a completed
+  /// series, or individual episodes), not a client-side heuristic.
+  /// [candidateIds] scopes the read so the whole history is not fetched.
+  Future<List<WatchedEntry>> watchedEntries(Iterable<String> candidateIds);
+
+  /// Fires when [all] may have changed (after a [save]).
+  Listenable get changes;
 }

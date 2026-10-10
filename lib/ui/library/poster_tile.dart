@@ -3,18 +3,28 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
 import '../../domain/backend/library_item.dart';
 import '../../domain/backend/watch_progress.dart';
+import '../widgets/watched_badge.dart';
 
 /// One poster in the library grid.
 ///
 /// Shows the artwork, the title, the release year, and — when there is watch
 /// progress — either a progress bar (started) or a check badge (finished).
 class PosterTile extends StatefulWidget {
-  const PosterTile({super.key, required this.item, this.progress, this.onTap});
+  const PosterTile({
+    super.key,
+    required this.item,
+    this.progress,
+    this.watched = false,
+    this.onTap,
+  });
 
   final LibraryItem item;
 
   /// Latest progress for this title, if any.
   final WatchProgress? progress;
+
+  /// Whether the account marked this title as watched.
+  final bool watched;
 
   final VoidCallback? onTap;
 
@@ -32,11 +42,12 @@ class _PosterTileState extends State<PosterTile> {
     final year = item.year;
     final fraction = widget.progress?.fraction;
 
-    // A finished episode is not a finished series, so the check badge is only
-    // trusted for movies. Series show the progress bar instead.
-    final watched =
-        fraction != null && fraction >= 0.95 && item.contentType == 'movie';
-    final inProgress = fraction != null && fraction > 0.02 && fraction < 0.95;
+    // The check mirrors the account's watched markers (see ProgressRepository),
+    // so it applies to movies and completed series alike. A watched title does
+    // not also show the progress bar.
+    final watched = widget.watched;
+    final inProgress =
+        !watched && fraction != null && fraction > 0.02 && fraction < 0.95;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -86,7 +97,7 @@ class _PosterTileState extends State<PosterTile> {
                           const Positioned(
                             top: AppSpacing.xs,
                             right: AppSpacing.xs,
-                            child: _WatchedBadge(),
+                            child: WatchedBadge(),
                           ),
                         if (inProgress)
                           Positioned(
@@ -130,23 +141,6 @@ class _PosterFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Icon(Icons.movie_outlined, color: AppColors.textSecondary),
-    );
-  }
-}
-
-/// Marks a title that has been watched to the end.
-class _WatchedBadge extends StatelessWidget {
-  const _WatchedBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: const BoxDecoration(
-        color: Colors.black54,
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(Icons.check, size: 14, color: AppColors.accent),
     );
   }
 }

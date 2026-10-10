@@ -1,13 +1,31 @@
+import 'dart:async';
+
 import 'package:agustream/app/app.dart';
+import 'package:agustream/domain/addons/meta.dart';
 import 'package:agustream/domain/backend/backend_exception.dart';
 import 'package:agustream/domain/backend/backend_profile.dart';
 import 'package:agustream/domain/backend/watch_progress.dart';
+import 'package:agustream/domain/backend/watched_entry.dart';
 import 'package:agustream/ui/detail/detail_screen.dart';
 import 'package:agustream/ui/library/poster_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_repositories.dart';
+
+/// Progress repository whose watched lookup waits on a gate, to observe the
+/// background "syncing" state.
+class _GatedProgress extends FakeProgressRepository {
+  _GatedProgress(this.gate, {super.watched});
+
+  final Completer<void> gate;
+
+  @override
+  Future<List<WatchedEntry>> watchedEntries(Iterable<String> candidateIds) async {
+    await gate.future;
+    return super.watchedEntries(candidateIds);
+  }
+}
 
 void main() {
   /// Pumps the app and opens the library section.
@@ -91,6 +109,48 @@ void main() {
             contentType: 'movie',
             position: const Duration(minutes: 116),
             duration: const Duration(minutes: 116),
+          ),
+        ],
+        // The account's watched marker (created by the backend on completion).
+        watched: {'tt1'},
+      ),
+    );
+
+    expect(find.byIcon(Icons.check), findsOneWidget);
+  });
+
+  testWidgets('marks a completed series watched', (tester) async {
+    await openLibrary(
+      tester,
+      library: FakeLibraryRepository(
+        items: [
+          libraryItem(id: 'tt9', name: 'Futurama', contentType: 'series'),
+        ],
+      ),
+      metadata: FakeMetadataRepository(
+        detailResult: const MetaDetail(
+          id: 'tt9',
+          type: 'series',
+          name: 'Futurama',
+          videos: [
+            MetaVideo(id: 'tt9:1:1', season: 1, episode: 1),
+            MetaVideo(id: 'tt9:1:2', season: 1, episode: 2),
+          ],
+        ),
+      ),
+      progress: FakeProgressRepository(
+        watchedHistory: const [
+          WatchedEntry(
+            contentId: 'tt9',
+            contentType: 'series',
+            season: 1,
+            episode: 1,
+          ),
+          WatchedEntry(
+            contentId: 'tt9',
+            contentType: 'series',
+            season: 1,
+            episode: 2,
           ),
         ],
       ),
@@ -197,5 +257,38 @@ void main() {
 
     expect(find.byType(DetailScreen), findsOneWidget);
     expect(find.text('Play'), findsOneWidget);
+  });
+
+  testWidgets('loads the grid first and syncs the badges in the background', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    await tester.pumpWidget(
+      AgustreamApp(
+        account: FakeAccountRepository(),
+        library: FakeLibraryRepository(
+          items: [libraryItem(id: 'tt1', name: 'Arrival')],
+        ),
+        progress: _GatedProgress(gate, watched: {'tt1'}),
+        metadata: FakeMetadataRepository(),
+        streams: FakeStreamRepository(),
+        catalogs: FakeCatalogRepository(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Library'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Content is there before the watched lookup finishes.
+    expect(find.text('Arrival'), findsOneWidget);
+    expect(find.text('Syncing…'), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsNothing);
+
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Syncing…'), findsNothing);
+    expect(find.byIcon(Icons.check), findsOneWidget);
   });
 }

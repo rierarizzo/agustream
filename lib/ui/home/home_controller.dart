@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../domain/addons/catalog_repository.dart';
@@ -7,6 +9,8 @@ import '../../domain/backend/library_item.dart';
 import '../../domain/backend/library_repository.dart';
 import '../../domain/backend/progress_repository.dart';
 import '../../domain/backend/watch_progress.dart';
+import '../../domain/backend/watched_badges.dart';
+import '../watched_badge_sync.dart';
 
 /// A library title with progress, shown in "Continue watching".
 class ContinueEntry {
@@ -31,8 +35,15 @@ class HomeRow {
 ///
 /// Catalogs come from the addons; continue watching comes from the backend
 /// (watch progress joined with the library), keeping the two concerns apart.
-class HomeController extends ChangeNotifier {
-  HomeController(this._account, this._catalogs, this._library, this._progress) {
+/// The watched badges are resolved in the background (see [WatchedBadgeSync]).
+class HomeController extends ChangeNotifier with WatchedBadgeSync {
+  HomeController(
+    this._account,
+    this._catalogs,
+    this._library,
+    this._progress,
+    this._badges,
+  ) {
     _account.changes.addListener(_handleAccountChanged);
   }
 
@@ -40,6 +51,14 @@ class HomeController extends ChangeNotifier {
   final CatalogRepository _catalogs;
   final LibraryRepository _library;
   final ProgressRepository _progress;
+  final WatchedBadgeResolver _badges;
+
+  @override
+  WatchedBadgeResolver get watchedBadgeResolver => _badges;
+
+  @override
+  String get watchedProfileKey =>
+      _account.activeProfile?.profileId?.toString() ?? '';
 
   static const int _maxRows = 5;
   static const int _maxItemsPerRow = 20;
@@ -49,6 +68,7 @@ class HomeController extends ChangeNotifier {
   List<MetaPreview> _featured = const <MetaPreview>[];
   List<ContinueEntry> _continueWatching = const <ContinueEntry>[];
   List<HomeRow> _rows = const <HomeRow>[];
+  List<WatchProgress> _progressEntries = const <WatchProgress>[];
   bool _isLoading = false;
   bool _hasLoaded = false;
   Object? _error;
@@ -56,6 +76,9 @@ class HomeController extends ChangeNotifier {
   List<MetaPreview> get featured => _featured;
   List<ContinueEntry> get continueWatching => _continueWatching;
   List<HomeRow> get rows => _rows;
+
+  /// Whether the account marked the title with [id] as watched.
+  bool isWatched(String id) => isWatchedId(id);
 
   /// `true` while a load is in flight.
   bool get isLoading => _isLoading;
@@ -90,10 +113,15 @@ class HomeController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+    // Home paints without waiting for the watch history; the checks fill in
+    // when the lookup finishes.
+    if (_hasLoaded) unawaited(_syncWatched());
   }
 
   Future<void> _loadContinueWatching() async {
     final progress = await _progress.all();
+    _progressEntries = progress;
     final library = await _library.all();
     final byContent = {for (final item in library) item.contentId: item};
 
@@ -108,6 +136,18 @@ class HomeController extends ChangeNotifier {
     }
     entries.sort((a, b) => _time(b.progress).compareTo(_time(a.progress)));
     _continueWatching = entries.take(_maxContinue).toList(growable: false);
+  }
+
+  /// Everything Home shows, so the badges can be resolved in one pass.
+  Future<void> _syncWatched() {
+    final candidates = <WatchedCandidate>{
+      for (final row in _rows)
+        for (final item in row.items)
+          WatchedCandidate(id: item.id, type: item.type),
+      for (final entry in _continueWatching)
+        WatchedCandidate(id: entry.item.contentId, type: entry.item.contentType),
+    };
+    return syncWatchedBadges(candidates, progressEntries: _progressEntries);
   }
 
   Future<void> _loadRows() async {
@@ -153,9 +193,11 @@ class HomeController extends ChangeNotifier {
   }
 
   void _clear() {
+    resetWatchedBadges();
     _featured = const <MetaPreview>[];
     _continueWatching = const <ContinueEntry>[];
     _rows = const <HomeRow>[];
+    _progressEntries = const <WatchProgress>[];
     _hasLoaded = false;
     _error = null;
     notifyListeners();

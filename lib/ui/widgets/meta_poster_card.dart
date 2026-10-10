@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../domain/addons/meta.dart';
+import 'watched_badge.dart';
 
 /// Poster card for a catalog item ([MetaPreview]), used by Home rows.
 class MetaPosterCard extends StatelessWidget {
   const MetaPosterCard({
     super.key,
     required this.preview,
+    this.watched = false,
     this.onTap,
     this.width,
   });
 
   final MetaPreview preview;
+
+  /// Whether the account marked this title as watched.
+  final bool watched;
+
   final VoidCallback? onTap;
 
   /// Fixed width for horizontal rows. When null, the card fills its parent
@@ -43,6 +49,12 @@ class MetaPosterCard extends StatelessWidget {
                     )
                   else
                     const _PosterFallback(),
+                  if (watched)
+                    const Positioned(
+                      top: AppSpacing.xs,
+                      right: AppSpacing.xs,
+                      child: WatchedBadge(),
+                    ),
                 ],
               ),
             ),
